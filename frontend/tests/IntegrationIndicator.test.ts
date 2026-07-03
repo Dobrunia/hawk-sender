@@ -17,7 +17,8 @@ describe('IntegrationIndicator', () => {
 
     // Assert
     expect(lamp.classes()).toContain('integration-indicator__lamp--on')
-    expect(wrapper.text()).toBe('Hawk')
+    expect(wrapper.text()).toContain('Hawk')
+    expect(wrapper.text()).toContain('Есть')
   })
 
   it('should render red lamp when integration is absent', () => {
@@ -34,15 +35,17 @@ describe('IntegrationIndicator', () => {
 
     // Assert
     expect(lamp.classes()).toContain('integration-indicator__lamp--off')
-    expect(wrapper.text()).toBe('Sentry')
+    expect(wrapper.text()).toContain('Sentry')
+    expect(wrapper.text()).toContain('Нет')
   })
 
-  it('should render unknown state while loading', () => {
+  it('should render loading state', () => {
     // Arrange
     const wrapper = mount(IntegrationIndicator, {
       props: {
         label: 'Hawk',
         present: null,
+        loading: true,
       },
     })
 
@@ -51,6 +54,21 @@ describe('IntegrationIndicator', () => {
 
     // Assert
     expect(lamp.classes()).toContain('integration-indicator__lamp--unknown')
-    expect(wrapper.attributes('aria-label')).toBe('Hawk: загрузка')
+    expect(wrapper.text()).toContain('Проверка')
+    expect(wrapper.attributes('aria-label')).toBe('Hawk: проверка')
+  })
+
+  it('should render unknown state after unavailable check', () => {
+    // Arrange
+    const wrapper = mount(IntegrationIndicator, {
+      props: {
+        label: 'Hawk',
+        present: null,
+      },
+    })
+
+    // Assert
+    expect(wrapper.text()).toContain('Неизвестно')
+    expect(wrapper.attributes('aria-label')).toBe('Hawk: неизвестно')
   })
 })

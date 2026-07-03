@@ -66,7 +66,7 @@ export function usePageIntegrations() {
   }
 
   onMounted(async () => {
-    await refresh()
+    await syncActiveTab()
     browser.storage.onChanged.addListener(onStorageChanged)
   })
 

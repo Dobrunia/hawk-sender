@@ -166,8 +166,8 @@ describe('App', () => {
     // Assert
     expect(text).toContain('Hawk')
     expect(text).toContain('Sentry')
-    expect(text).not.toContain('Есть')
-    expect(text).not.toContain('Нет')
+    expect(text).toContain('Есть')
+    expect(text).toContain('Нет')
   })
 
   it('should render manual send button', () => {

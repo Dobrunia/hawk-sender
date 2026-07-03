@@ -1,15 +1,21 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 
-const { label, present } = defineProps<{
+const { label, loading = false, present } = defineProps<{
   label: string
+  loading?: boolean
   /** true = есть, false = нет, null = неизвестно / загрузка */
   present: boolean | null
 }>()
 
+const statusText = computed(() => {
+  if (loading) return 'Проверка'
+  if (present === null) return 'Неизвестно'
+  return present ? 'Есть' : 'Нет'
+})
+
 const ariaLabel = computed(() => {
-  if (present === null) return `${label}: загрузка`
-  return `${label}: ${present ? 'есть' : 'нет'}`
+  return `${label}: ${statusText.value.toLowerCase()}`
 })
 </script>
 
@@ -25,6 +31,7 @@ const ariaLabel = computed(() => {
       aria-hidden="true"
     />
     <span class="integration-indicator__label">{{ label }}</span>
+    <span class="integration-indicator__status">{{ statusText }}</span>
   </div>
 </template>
 
@@ -59,6 +66,13 @@ const ariaLabel = computed(() => {
 
 .integration-indicator__label {
   font-size: 0.8125rem;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.integration-indicator__status {
+  color: #64748b;
+  font-size: 0.75rem;
   line-height: 1;
   white-space: nowrap;
 }

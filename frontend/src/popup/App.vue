@@ -99,11 +99,13 @@ async function sendManually() {
     <section class="popup__integrations" aria-label="На текущей странице">
       <IntegrationIndicator
         label="Hawk"
-        :present="integrationsLoading ? null : hawk"
+        :loading="integrationsLoading"
+        :present="hawk"
       />
       <IntegrationIndicator
         label="Sentry"
-        :present="integrationsLoading ? null : sentry"
+        :loading="integrationsLoading"
+        :present="sentry"
       />
     </section>
   </main>

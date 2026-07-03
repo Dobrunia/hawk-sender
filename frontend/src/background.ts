@@ -10,27 +10,29 @@ import {
   setTabWorkflowProgress,
 } from '@/shared/storage/workflowOutcomeStorage'
 import { runAutomaticWorkflow } from '@/shared/workflow/automaticWorkflow'
+import { runManualWorkflow } from '@/shared/workflow/manualWorkflow'
 import {
-  isRunAutomaticWorkflowRequest,
-  type RunAutomaticWorkflowRequest,
-} from '@/shared/workflow/automaticWorkflowMessage'
+  isRunWorkflowRequest,
+  type RunWorkflowRequest,
+} from '@/shared/workflow/workflowRunMessage'
 import { getWorkflowOutcome } from '@/shared/workflow/outcomes'
 
 browser.runtime.onInstalled.addListener(async () => {
   await ensureDefaultSettings()
 })
 
-async function runAutomaticWorkflowForTab({
+async function runWorkflowForTab({
+  mode,
   tabId,
   tabUrl,
   enabled,
-}: Omit<RunAutomaticWorkflowRequest, 'type'>) {
+}: Omit<RunWorkflowRequest, 'type'>) {
   if (!tabUrl.startsWith('http')) {
     await setTabWorkflowOutcome(tabId, tabUrl, null)
     return null
   }
 
-  const workflowEnabled = enabled ?? await isExtensionEnabled()
+  const workflowEnabled = mode === 'manual' ? true : enabled ?? await isExtensionEnabled()
 
   if (!workflowEnabled) {
     await setTabWorkflowProgress(tabId, tabUrl, {
@@ -48,10 +50,15 @@ async function runAutomaticWorkflowForTab({
   try {
     await setTabWorkflowProgress(tabId, tabUrl, {
       status: 'running',
-      message: 'Запускаем automatic workflow',
+      message: mode === 'manual'
+        ? 'Запускаем ручную отправку'
+        : 'Запускаем automatic workflow',
     })
 
-    const { outcome } = await runAutomaticWorkflow({
+    const runWorkflow = mode === 'manual'
+      ? runManualWorkflow
+      : runAutomaticWorkflow
+    const { outcome } = await runWorkflow({
       tabId,
       tabUrl,
       enabled: workflowEnabled,
@@ -85,10 +92,10 @@ browser.runtime.onMessage.addListener((message: unknown) => {
     return handleNativeHostRequest(request)
   }
 
-  if (isRunAutomaticWorkflowRequest(message)) {
+  if (isRunWorkflowRequest(message)) {
     const { type: _type, ...context } = message
 
-    return runAutomaticWorkflowForTab(context)
+    return runWorkflowForTab(context)
       .then((outcome) => ({ ok: true, outcome }))
       .catch((error) => ({
         ok: false,
@@ -104,7 +111,8 @@ browser.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
     return
   }
 
-  await runAutomaticWorkflowForTab({
+  await runWorkflowForTab({
+    mode: 'automatic',
     tabId,
     tabUrl: tab.url,
   })

@@ -54,11 +54,11 @@ const workflowStepLabel = computed(() => {
 
 async function handleSetEnabled(value: boolean) {
   await setEnabled(value)
-  await rerunForActiveTab(value)
+  await rerunForActiveTab(value, 'automatic')
 }
 
 async function sendManually() {
-  await rerunForActiveTab(true)
+  await rerunForActiveTab(true, 'manual')
 }
 </script>
 

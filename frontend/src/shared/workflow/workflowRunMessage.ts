@@ -1,42 +1,46 @@
 import browser from 'webextension-polyfill'
 import type { WorkflowOutcome } from '@/shared/workflow/outcomes'
 
-export interface RunAutomaticWorkflowRequest {
-  type: 'run-automatic-workflow'
+export type WorkflowRunMode = 'automatic' | 'manual'
+
+export interface RunWorkflowRequest {
+  type: 'run-workflow'
+  mode: WorkflowRunMode
   tabId: number
   tabUrl: string
   enabled?: boolean
 }
 
-export interface RunAutomaticWorkflowResponse {
+export interface RunWorkflowResponse {
   ok: boolean
   outcome?: WorkflowOutcome | null
   error?: string
 }
 
-export function isRunAutomaticWorkflowRequest(
+export function isRunWorkflowRequest(
   message: unknown,
-): message is RunAutomaticWorkflowRequest {
+): message is RunWorkflowRequest {
   return (
     typeof message === 'object'
     && message !== null
     && 'type' in message
-    && message.type === 'run-automatic-workflow'
+    && message.type === 'run-workflow'
+    && 'mode' in message
     && 'tabId' in message
     && 'tabUrl' in message
   )
 }
 
-export async function requestAutomaticWorkflowRun(
-  context: Omit<RunAutomaticWorkflowRequest, 'type'>,
+export async function requestWorkflowRun(
+  context: Omit<RunWorkflowRequest, 'type'>,
 ): Promise<WorkflowOutcome | null> {
   const response = (await browser.runtime.sendMessage({
-    type: 'run-automatic-workflow',
+    type: 'run-workflow',
     ...context,
-  } satisfies RunAutomaticWorkflowRequest)) as RunAutomaticWorkflowResponse
+  } satisfies RunWorkflowRequest)) as RunWorkflowResponse
 
   if (!response?.ok) {
-    throw new Error(response?.error ?? 'Automatic workflow failed')
+    throw new Error(response?.error ?? 'Workflow failed')
   }
 
   return response.outcome ?? null

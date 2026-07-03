@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { runAutomaticWorkflow } from '@/shared/workflow/automaticWorkflow'
+import { runManualWorkflow } from '@/shared/workflow/manualWorkflow'
 import type { WorkflowContext, WorkflowStep } from '@/shared/workflow/types'
 import { runWorkflowSteps } from '@/shared/workflow/runner'
 import { checkExtensionEnabled } from '@/shared/workflow/steps/checkExtensionEnabled'
@@ -248,7 +249,7 @@ describe('runAutomaticWorkflow', () => {
     expect(sendLetter).not.toHaveBeenCalled()
   })
 
-  it('should stop before sending when page integration check is unavailable', async () => {
+  it('should keep sending with standard addresses when page integration check is unavailable', async () => {
     // Arrange
     vi.mocked(isExtensionEnabled).mockResolvedValue(true)
     vi.mocked(getTabIntegrations).mockResolvedValue({
@@ -261,8 +262,8 @@ describe('runAutomaticWorkflow', () => {
     const result = await runAutomaticWorkflow(workflowContext)
 
     // Assert
-    expect(result.outcome).toEqual(WORKFLOW_OUTCOMES.PAGE_ACCESS_UNAVAILABLE)
-    expect(sendLetter).not.toHaveBeenCalled()
+    expect(result.outcome).toEqual(WORKFLOW_OUTCOMES.EMAIL_SENT)
+    expect(sendLetter).toHaveBeenCalled()
   })
 
   it('should return HAWK_INSTALLED when Hawk is detected on page', async () => {
@@ -299,6 +300,56 @@ describe('runAutomaticWorkflow', () => {
 
     // Assert
     expect(result.outcome).toEqual(WORKFLOW_OUTCOMES.EMAIL_ALREADY_SENT_WITHIN_HALF_YEAR)
+  })
+})
+
+describe('runManualWorkflow', () => {
+  beforeEach(() => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-07-03T12:00:00.000Z'))
+    vi.mocked(getTabIntegrations).mockReset()
+    vi.mocked(checkDomain).mockReset()
+    vi.mocked(sendLetter).mockReset()
+    vi.mocked(resolveDomainSendAddresses).mockReset()
+    vi.mocked(getTabIntegrations).mockResolvedValue({
+      hawk: false,
+      sentry: false,
+      available: false,
+    })
+    vi.mocked(sendLetter).mockResolvedValue({
+      name: 'example.com',
+      sentTo: [{ to: 'contact@example.com', status: true }],
+      updatedAt: '2026-07-03T12:00:00.000Z',
+    })
+    vi.mocked(resolveDomainSendAddresses).mockResolvedValue(['contact@example.com'])
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
+  it('should send without automatic anti-spam checks', async () => {
+    // Arrange
+    vi.mocked(checkDomain).mockResolvedValue({
+      name: 'example.com',
+      sentTo: [{ to: 'contact@example.com', status: true }],
+      updatedAt: '2026-07-03T12:00:00.000Z',
+    })
+
+    // Act
+    const result = await runManualWorkflow({
+      tabId: 1,
+      tabUrl: 'https://example.com',
+    })
+
+    // Assert
+    expect(result.outcome).toEqual(WORKFLOW_OUTCOMES.EMAIL_SENT)
+    expect(checkDomain).not.toHaveBeenCalled()
+    expect(sendLetter).toHaveBeenCalledWith(
+      expect.objectContaining({
+        name: 'example.com',
+      }),
+    )
   })
 })
 
@@ -348,18 +399,6 @@ describe('resolvePopupOutcome', () => {
 
     // Assert
     expect(display.message).toBe('Домен не в зоне .ru')
-    expect(display.color).toBe(3)
-  })
-
-  it('should show PAGE_ACCESS_UNAVAILABLE message and neutral color from outcome', () => {
-    // Arrange
-    const outcome = WORKFLOW_OUTCOMES.PAGE_ACCESS_UNAVAILABLE
-
-    // Act
-    const display = resolvePopupOutcome(outcome, false)
-
-    // Assert
-    expect(display.message).toBe('Нет доступа к проверке страницы')
     expect(display.color).toBe(3)
   })
 

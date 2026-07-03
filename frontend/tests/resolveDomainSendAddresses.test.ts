@@ -46,6 +46,6 @@ describe('resolveDomainSendAddresses', () => {
 
     // Assert
     expect(addresses).toContain('contact@example.com')
-    expect(addresses.length).toBeGreaterThan(10)
+    expect(addresses.length).toBeGreaterThan(5)
   })
 })

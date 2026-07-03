@@ -6,7 +6,10 @@ import {
   onWorkflowOutcomeChanged,
   type TabWorkflowProgress,
 } from '@/shared/storage/workflowOutcomeStorage'
-import { requestAutomaticWorkflowRun } from '@/shared/workflow/automaticWorkflowMessage'
+import {
+  requestWorkflowRun,
+  type WorkflowRunMode,
+} from '@/shared/workflow/workflowRunMessage'
 import type { WorkflowOutcome } from '@/shared/workflow/outcomes'
 
 export function useAutomaticWorkflowOutcome(
@@ -56,7 +59,10 @@ export function useAutomaticWorkflowOutcome(
     }
   }
 
-  async function rerunForActiveTab(nextEnabled = enabled.value) {
+  async function rerunForActiveTab(
+    nextEnabled = enabled.value,
+    mode: WorkflowRunMode = 'automatic',
+  ) {
     loading.value = true
 
     try {
@@ -74,7 +80,8 @@ export function useAutomaticWorkflowOutcome(
         status: 'running',
         message: 'Запускаем workflow',
       }
-      outcome.value = await requestAutomaticWorkflowRun({
+      outcome.value = await requestWorkflowRun({
+        mode,
         tabId: tab.id,
         tabUrl: tab.url,
         enabled: nextEnabled,

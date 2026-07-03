@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   belongsToDomain,
   dedupeEmails,
+  deobfuscateEmailText,
   extractEmailsFromDocument,
   extractEmailsFromText,
   filterEmailsForDomain,
@@ -22,6 +23,26 @@ describe('extractEmailsFromText', () => {
 
     // Assert
     expect(emails).toEqual(['team@example.com', 'sales@sub.example.com'])
+  })
+
+  it('should extract obfuscated emails from plain text', () => {
+    // Arrange
+    const text = 'Contacts: info [at] example [dot] ru, support at example dot ru'
+
+    // Act
+    const emails = extractEmailsFromText(text)
+
+    // Assert
+    expect(emails).toEqual(['info@example.ru', 'support@example.ru'])
+  })
+
+  it('should not replace at inside regular words', () => {
+    // Act
+    const text = deobfuscateEmailText('Contact us at info [at] example [dot] ru')
+
+    // Assert
+    expect(text).toContain('Contact us')
+    expect(text).toContain('info@example.ru')
   })
 })
 

@@ -1,3 +1,5 @@
+import { STANDARD_EMAIL_LOCAL_PARTS } from '@/shared/recipients/standardLocalParts'
+
 const EMAIL_PATTERN = /[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}/gi
 
 export function normalizeEmail(email: string): string {
@@ -9,7 +11,7 @@ export function isValidEmail(email: string): boolean {
 }
 
 export function extractEmailsFromText(text: string): string[] {
-  const matches = text.match(EMAIL_PATTERN) ?? []
+  const matches = deobfuscateEmailText(text).match(EMAIL_PATTERN) ?? []
   const emails = new Set<string>()
 
   for (const match of matches) {
@@ -20,7 +22,7 @@ export function extractEmailsFromText(text: string): string[] {
     }
   }
 
-  return [...emails]
+  return prioritizeEmails([...emails])
 }
 
 export function extractEmailsFromDocument(root: Document): string[] {
@@ -50,7 +52,28 @@ export function extractEmailsFromDocument(root: Document): string[] {
     emails.add(email)
   }
 
-  return [...emails]
+  return prioritizeEmails([...emails])
+}
+
+export function deobfuscateEmailText(text: string): string {
+  return text
+    .replace(/\s*(?:\[(?:at|собака)\]|\((?:at|собака)\)|\s+(?:at|собака)\s+)\s*/gi, '@')
+    .replace(/\s*(?:\[(?:dot|точка)\]|\((?:dot|точка)\)|\s+(?:dot|точка)\s+)\s*/gi, '.')
+}
+
+export function prioritizeEmails(emails: string[]): string[] {
+  return [...emails].sort((left, right) => {
+    return getEmailPriority(left) - getEmailPriority(right)
+  })
+}
+
+function getEmailPriority(email: string): number {
+  const localPart = email.split('@')[0] ?? ''
+  const contactIndex = STANDARD_EMAIL_LOCAL_PARTS.indexOf(
+    localPart as typeof STANDARD_EMAIL_LOCAL_PARTS[number],
+  )
+
+  return contactIndex === -1 ? STANDARD_EMAIL_LOCAL_PARTS.length : contactIndex
 }
 
 function getDocumentText(root: Document): string {

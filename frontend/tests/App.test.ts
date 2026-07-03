@@ -85,7 +85,7 @@ describe('App', () => {
 
     // Assert
     expect(setEnabled).toHaveBeenCalledWith(false)
-    expect(rerunForActiveTab).toHaveBeenCalledWith(false)
+    expect(rerunForActiveTab).toHaveBeenCalledWith(false, 'automatic')
   })
 
   it('should rerun workflow when toggle is enabled', async () => {
@@ -111,7 +111,7 @@ describe('App', () => {
 
     // Assert
     expect(setEnabled).toHaveBeenCalledWith(true)
-    expect(rerunForActiveTab).toHaveBeenCalledWith(true)
+    expect(rerunForActiveTab).toHaveBeenCalledWith(true, 'automatic')
   })
 
   it('should render HAWK_INSTALLED workflow outcome on current page', () => {
@@ -216,6 +216,6 @@ describe('App', () => {
     await wrapper.find('.manual-send').trigger('click')
 
     // Assert
-    expect(rerunForActiveTab).toHaveBeenCalledWith(true)
+    expect(rerunForActiveTab).toHaveBeenCalledWith(true, 'manual')
   })
 })

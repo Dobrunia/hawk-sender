@@ -17,5 +17,7 @@ describe('buildStandardDomainAddresses', () => {
     expect(addresses).toContain('contact@example.com')
     expect(addresses).toContain('hello@example.com')
     expect(addresses).toContain('sales@example.com')
+    expect(addresses).toContain('partnerships@example.com')
+    expect(addresses).toContain('jobs@example.com')
   })
 })

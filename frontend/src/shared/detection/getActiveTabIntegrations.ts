@@ -1,14 +1,14 @@
 import browser from 'webextension-polyfill'
 import { probeIntegrationsInPage } from '@/shared/detection/checkIntegrations'
-import type { IntegrationStatus, TabIntegrationStatus } from '@/shared/types/integrations'
+import type { PageIntegrations, TabPageIntegrations } from '@/shared/types/integrations'
 
-const UNAVAILABLE: TabIntegrationStatus = {
+const UNAVAILABLE: TabPageIntegrations = {
   hawk: false,
   sentry: false,
   available: false,
 }
 
-export async function getActiveTabIntegrations(): Promise<TabIntegrationStatus> {
+export async function getActiveTabIntegrations(): Promise<TabPageIntegrations> {
   const [tab] = await browser.tabs.query({ active: true, currentWindow: true })
 
   if (!tab?.id || !tab.url?.startsWith('http')) {
@@ -25,7 +25,7 @@ export async function getActiveTabIntegrations(): Promise<TabIntegrationStatus> 
     return UNAVAILABLE
   }
 
-  const integrations = result.result as IntegrationStatus
+  const integrations = result.result as PageIntegrations
 
   return {
     ...integrations,

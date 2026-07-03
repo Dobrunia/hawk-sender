@@ -2,17 +2,18 @@ import { describe, expect, it, vi } from 'vitest'
 import { ref } from 'vue'
 import { mount } from '@vue/test-utils'
 import App from '@/popup/App.vue'
+import { useExtensionSettings } from '@/popup/composables/useExtensionSettings'
 
 vi.mock('@/popup/composables/useExtensionSettings', () => ({
-  useExtensionSettings: () => ({
+  useExtensionSettings: vi.fn(() => ({
     enabled: ref(true),
     loading: ref(false),
     setEnabled: vi.fn(),
-  }),
+  })),
 }))
 
-vi.mock('@/popup/composables/useIntegrationStatus', () => ({
-  useIntegrationStatus: () => ({
+vi.mock('@/popup/composables/usePageIntegrations', () => ({
+  usePageIntegrations: () => ({
     hawk: ref(true),
     sentry: ref(false),
     loading: ref(false),
@@ -21,7 +22,7 @@ vi.mock('@/popup/composables/useIntegrationStatus', () => ({
 }))
 
 describe('App', () => {
-  it('should render title and active status when extension is enabled', () => {
+  it('should render title and active workflow label when extension is enabled', () => {
     // Arrange
     const wrapper = mount(App)
 
@@ -34,7 +35,23 @@ describe('App', () => {
     expect(text).toContain('Автосбор и отправка')
   })
 
-  it('should render hawk and sentry integration status rows', () => {
+  it('should render inactive workflow outcome when extension is disabled', () => {
+    // Arrange
+    vi.mocked(useExtensionSettings).mockReturnValue({
+      enabled: ref(false),
+      loading: ref(false),
+      setEnabled: vi.fn(),
+    })
+    const wrapper = mount(App)
+
+    // Act
+    const text = wrapper.text()
+
+    // Assert
+    expect(text).toContain('Автоматическая отправка неактивна')
+  })
+
+  it('should render hawk and sentry integration indicators', () => {
     // Arrange
     const wrapper = mount(App)
 

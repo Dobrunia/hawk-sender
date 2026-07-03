@@ -1,4 +1,4 @@
-import type { IntegrationStatus } from '@/shared/types/integrations'
+import type { PageIntegrations } from '@/shared/types/integrations'
 
 type WindowLike = Record<string, unknown>
 
@@ -13,7 +13,7 @@ export function hasSentry(windowObj: WindowLike): boolean {
   )
 }
 
-export function checkIntegrations(windowObj: WindowLike): IntegrationStatus {
+export function checkIntegrations(windowObj: WindowLike): PageIntegrations {
   return {
     hawk: hasHawkRelease(windowObj),
     sentry: hasSentry(windowObj),
@@ -21,7 +21,7 @@ export function checkIntegrations(windowObj: WindowLike): IntegrationStatus {
 }
 
 /** Runs in page MAIN world — logic must match checkIntegrations */
-export function probeIntegrationsInPage(): IntegrationStatus {
+export function probeIntegrationsInPage(): PageIntegrations {
   const windowObj = window as unknown as WindowLike
 
   return {

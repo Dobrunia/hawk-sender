@@ -21,7 +21,7 @@ describe('getActiveTabIntegrations', () => {
     query.mockReset()
   })
 
-  it('should return unavailable status for non-http tabs', async () => {
+  it('should return unavailable integrations for non-http tabs', async () => {
     // Arrange
     query.mockResolvedValue([{ id: 1, url: 'about:blank' }])
 

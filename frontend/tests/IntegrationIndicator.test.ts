@@ -1,11 +1,11 @@
 import { describe, expect, it } from 'vitest'
 import { mount } from '@vue/test-utils'
-import StatusIndicator from '@/popup/components/StatusIndicator.vue'
+import IntegrationIndicator from '@/popup/components/IntegrationIndicator.vue'
 
-describe('StatusIndicator', () => {
+describe('IntegrationIndicator', () => {
   it('should render green lamp when integration is present', () => {
     // Arrange
-    const wrapper = mount(StatusIndicator, {
+    const wrapper = mount(IntegrationIndicator, {
       props: {
         label: 'Hawk',
         present: true,
@@ -13,16 +13,16 @@ describe('StatusIndicator', () => {
     })
 
     // Act
-    const lamp = wrapper.get('.status-indicator__lamp')
+    const lamp = wrapper.get('.integration-indicator__lamp')
 
     // Assert
-    expect(lamp.classes()).toContain('status-indicator__lamp--on')
+    expect(lamp.classes()).toContain('integration-indicator__lamp--on')
     expect(wrapper.text()).toBe('Hawk')
   })
 
   it('should render red lamp when integration is absent', () => {
     // Arrange
-    const wrapper = mount(StatusIndicator, {
+    const wrapper = mount(IntegrationIndicator, {
       props: {
         label: 'Sentry',
         present: false,
@@ -30,16 +30,16 @@ describe('StatusIndicator', () => {
     })
 
     // Act
-    const lamp = wrapper.get('.status-indicator__lamp')
+    const lamp = wrapper.get('.integration-indicator__lamp')
 
     // Assert
-    expect(lamp.classes()).toContain('status-indicator__lamp--off')
+    expect(lamp.classes()).toContain('integration-indicator__lamp--off')
     expect(wrapper.text()).toBe('Sentry')
   })
 
   it('should render unknown state while loading', () => {
     // Arrange
-    const wrapper = mount(StatusIndicator, {
+    const wrapper = mount(IntegrationIndicator, {
       props: {
         label: 'Hawk',
         present: null,
@@ -47,10 +47,10 @@ describe('StatusIndicator', () => {
     })
 
     // Act
-    const lamp = wrapper.get('.status-indicator__lamp')
+    const lamp = wrapper.get('.integration-indicator__lamp')
 
     // Assert
-    expect(lamp.classes()).toContain('status-indicator__lamp--unknown')
+    expect(lamp.classes()).toContain('integration-indicator__lamp--unknown')
     expect(wrapper.attributes('aria-label')).toBe('Hawk: загрузка')
   })
 })

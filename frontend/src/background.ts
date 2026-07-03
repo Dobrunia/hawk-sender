@@ -1,23 +1,26 @@
 import browser from 'webextension-polyfill'
-import {
-  ensureDefaultSettings,
-  isExtensionEnabled,
-} from '@/shared/storage/settingsStorage'
+import { ensureDefaultSettings } from '@/shared/storage/settingsStorage'
+import { runAutomaticWorkflow } from '@/shared/workflow/automaticWorkflow'
 
 browser.runtime.onInstalled.addListener(async () => {
   await ensureDefaultSettings()
 })
 
-browser.tabs.onUpdated.addListener(async (_tabId, changeInfo, tab) => {
+browser.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
   if (changeInfo.status !== 'complete' || !tab.url?.startsWith('http')) {
     return
   }
 
-  if (!(await isExtensionEnabled())) {
+  const { outcome } = await runAutomaticWorkflow({
+    tabId,
+    tabUrl: tab.url,
+  })
+
+  if (outcome?.terminal) {
     return
   }
 
-  // TODO: pipeline проверок и отправки
+  // TODO: завершение pipeline для текущей вкладки
 })
 
-export { isExtensionEnabled }
+export { runAutomaticWorkflow }

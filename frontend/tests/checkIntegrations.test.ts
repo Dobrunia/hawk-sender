@@ -72,7 +72,7 @@ describe('checkIntegrations', () => {
     expect(result).toBe(false)
   })
 
-  it('should return combined hawk and sentry status', () => {
+  it('should return combined hawk and sentry detection', () => {
     // Arrange
     const windowObj = {
       HAWK_RELEASE: '2.0.0',

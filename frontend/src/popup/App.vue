@@ -1,27 +1,34 @@
 <script setup lang="ts">
 import EnableToggle from './components/EnableToggle.vue'
 import HawkIcon from './components/HawkIcon.vue'
-import StatusIndicator from './components/StatusIndicator.vue'
+import IntegrationIndicator from './components/IntegrationIndicator.vue'
 import { useExtensionSettings } from './composables/useExtensionSettings'
-import { useIntegrationStatus } from './composables/useIntegrationStatus'
+import { usePageIntegrations } from './composables/usePageIntegrations'
+import {
+  getPopupWorkflowLabel,
+  isPopupWorkflowInactive,
+} from '@/shared/workflow/popupWorkflow'
 
 const { enabled, loading, setEnabled } = useExtensionSettings()
 const {
   hawk,
   sentry,
   loading: integrationsLoading,
-} = useIntegrationStatus()
+} = usePageIntegrations()
 </script>
 
 <template>
   <main class="popup">
     <header class="popup__header">
       <h1 class="popup__title">
-        <HawkIcon class="popup__title-icon" />
         Hawk Sender
+        <HawkIcon class="popup__title-icon" />
       </h1>
-      <p class="popup__status" :class="{ 'popup__status--off': !enabled && !loading }">
-        {{ loading ? 'Загрузка…' : enabled ? 'Активно' : 'Выключено' }}
+      <p
+        class="popup__workflow"
+        :class="{ 'popup__workflow--off': isPopupWorkflowInactive(enabled, loading) }"
+      >
+        {{ getPopupWorkflowLabel(enabled, loading) }}
       </p>
     </header>
 
@@ -32,11 +39,11 @@ const {
     />
 
     <section class="popup__integrations" aria-label="На текущей странице">
-      <StatusIndicator
+      <IntegrationIndicator
         label="Hawk"
         :present="integrationsLoading ? null : hawk"
       />
-      <StatusIndicator
+      <IntegrationIndicator
         label="Sentry"
         :present="integrationsLoading ? null : sentry"
       />
@@ -71,13 +78,13 @@ const {
   color: #2563eb;
 }
 
-.popup__status {
+.popup__workflow {
   margin: 4px 0 0;
   font-size: 0.75rem;
   color: #16a34a;
 }
 
-.popup__status--off {
+.popup__workflow--off {
   color: #64748b;
 }
 

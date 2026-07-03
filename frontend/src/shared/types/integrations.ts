@@ -1,9 +1,9 @@
-export interface IntegrationStatus {
+export interface PageIntegrations {
   hawk: boolean
   sentry: boolean
 }
 
-export interface TabIntegrationStatus extends IntegrationStatus {
+export interface TabPageIntegrations extends PageIntegrations {
   /** false for system pages where detection is not possible */
   available: boolean
 }

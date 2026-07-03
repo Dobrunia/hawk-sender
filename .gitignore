@@ -5,3 +5,6 @@ dist
 coverage
 *.log
 .env
+native/.env
+native/data/*.db
+native/data/*.db-*

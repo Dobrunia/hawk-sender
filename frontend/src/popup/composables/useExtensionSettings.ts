@@ -5,7 +5,7 @@ import { SETTINGS_STORAGE_KEY } from '@/shared/storage/keys'
 import type { ExtensionSettings } from '@/shared/types/settings'
 
 export function useExtensionSettings() {
-  const enabled = ref(true)
+  const enabled = ref(false)
   const loading = ref(true)
 
   function applySettings(settings: ExtensionSettings) {

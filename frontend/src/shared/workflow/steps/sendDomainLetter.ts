@@ -16,8 +16,20 @@ export const sendDomainLetter: WorkflowStep = async ({ tabId, tabUrl }) => {
     return { type: 'continue' }
   }
 
+  if (result.reason === 'no_delivery') {
+    return {
+      type: 'stop',
+      outcome: getWorkflowOutcome('EMAIL_NO_DELIVERY'),
+    }
+  }
+
   return {
     type: 'stop',
-    outcome: getWorkflowOutcome('EMAIL_SEND_FAILED'),
+    outcome: {
+      ...getWorkflowOutcome('EMAIL_HELPER_ERROR'),
+      message: result.error
+        ? `Ошибка helper: ${result.error}`
+        : getWorkflowOutcome('EMAIL_HELPER_ERROR').message,
+    },
   }
 }

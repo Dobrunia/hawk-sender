@@ -1,8 +1,8 @@
 import { ref } from 'vue'
 import { refreshPageIntegrationsOnly } from '@/shared/detection/syncPageIntegrations'
+import { runManualSend } from '@/shared/send/manualSendMessage'
 import {
   formatManualSendResult,
-  sendDomainLetterForTab,
   type SendDomainLetterResult,
 } from '@/shared/send/sendDomainLetterForTab'
 import { getActiveTabContext } from '@/shared/tabs/getActiveTabContext'
@@ -10,7 +10,7 @@ import { getActiveTabContext } from '@/shared/tabs/getActiveTabContext'
 export function useManualSend() {
   const loading = ref(false)
   const result = ref<SendDomainLetterResult | null>(null)
-  const display = ref<{ message: string; color: 1 | 2 } | null>(null)
+  const display = ref<{ message: string; color: 1 | 2 | 3 } | null>(null)
 
   async function send() {
     loading.value = true
@@ -32,7 +32,7 @@ export function useManualSend() {
 
     await refreshPageIntegrationsOnly(context)
 
-    result.value = await sendDomainLetterForTab(context)
+    result.value = await runManualSend(context)
     display.value = formatManualSendResult(result.value)
     loading.value = false
   }

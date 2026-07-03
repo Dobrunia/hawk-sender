@@ -1,9 +1,9 @@
 import type { SentToEntry } from '@/shared/api/types'
+import { sendLetter } from '@/shared/api/domainApi'
 import {
   getSuccessfulRecipients,
   hasSuccessfulSend,
-  sendLetter,
-} from '@/shared/api/domainApi'
+} from '@/shared/api/sendRecord'
 import { extractDomainFromUrl } from '@/shared/domain/extractDomain'
 import { readSentryInstalled } from '@/shared/integrations/readPageIntegrations'
 import { buildLetterContent } from '@/shared/letters/buildLetter'
@@ -11,8 +11,8 @@ import { resolveDomainSendAddresses } from '@/shared/recipients/resolveDomainSen
 
 export type SendDomainLetterFailureReason =
   | 'no_domain'
-  | 'send_failed'
-  | 'network_error'
+  | 'no_delivery'
+  | 'helper_error'
 
 export type SendDomainLetterResult =
   | {
@@ -24,6 +24,7 @@ export type SendDomainLetterResult =
       status: 'failed'
       domain: string | null
       reason: SendDomainLetterFailureReason
+      error?: string
     }
 
 export interface SendDomainLetterInput {
@@ -65,7 +66,7 @@ export async function sendDomainLetterForTab(
       return {
         status: 'failed',
         domain,
-        reason: 'send_failed',
+        reason: 'no_delivery',
       }
     }
 
@@ -77,18 +78,19 @@ export async function sendDomainLetterForTab(
         status: true,
       })),
     }
-  } catch {
+  } catch (error) {
     return {
       status: 'failed',
       domain,
-      reason: 'network_error',
+      reason: 'helper_error',
+      error: error instanceof Error ? error.message : String(error),
     }
   }
 }
 
 export function formatManualSendResult(result: SendDomainLetterResult): {
   message: string
-  color: 1 | 2
+  color: 1 | 2 | 3
 } {
   if (result.status === 'success') {
     const recipients = result.sentTo.map((entry) => entry.to).join(', ')
@@ -108,8 +110,17 @@ export function formatManualSendResult(result: SendDomainLetterResult): {
     }
   }
 
+  if (result.reason === 'no_delivery') {
+    return {
+      message: 'Ни на один адрес не доставлено',
+      color: 3,
+    }
+  }
+
   return {
-    message: 'Не удалось отправить письмо',
+    message: result.error
+      ? `Ошибка helper: ${result.error}`
+      : 'Ошибка helper',
     color: 1,
   }
 }

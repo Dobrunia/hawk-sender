@@ -1,60 +1,68 @@
 #!/usr/bin/env node
-import fs from 'node:fs'
 import path from 'node:path'
-import { execSync, spawnSync } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
+import { getDomainRecord, saveSendResult } from './lib/db.js'
+import { dedupeAddresses } from './lib/mergeSentTo.js'
+import { isSmtpConfigured, sendEmails } from './lib/smtp.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
-const SERVER_DIR = path.resolve(__dirname, '../server')
-const PID_FILE = path.join(SERVER_DIR, 'data/server.pid')
-const EXTENSION_ID = 'hawk-sender@dobrunia.local'
+const ROOT_DIR = path.resolve(__dirname, '..')
 
-function readPort() {
-  const envPath = path.join(SERVER_DIR, '.env')
-
-  if (!fs.existsSync(envPath)) {
-    return 8787
-  }
-
-  const match = fs.readFileSync(envPath, 'utf8').match(/^PORT=(\d+)/m)
-  return match ? Number(match[1]) : 8787
+if (!process.env.DATABASE_PATH) {
+  process.env.DATABASE_PATH = path.join(ROOT_DIR, 'native/data/hawk-sender.db')
 }
 
-function readExactly(byteCount) {
+function readMessage() {
   return new Promise((resolve, reject) => {
     let buffer = Buffer.alloc(0)
 
-    function onReadable() {
-      const chunk = process.stdin.read()
-
-      if (!chunk) {
-        return
+    function tryParse() {
+      if (buffer.length < 4) {
+        return false
       }
 
-      buffer = Buffer.concat([buffer, chunk])
+      const length = buffer.readUInt32LE(0)
 
-      if (buffer.length >= byteCount) {
-        process.stdin.removeListener('readable', onReadable)
-        process.stdin.removeListener('end', onEnd)
-        resolve(buffer.subarray(0, byteCount))
+      if (buffer.length < 4 + length) {
+        return false
+      }
+
+      const body = buffer.subarray(4, 4 + length)
+      resolve(JSON.parse(body.toString('utf8')))
+      return true
+    }
+
+    function onReadable() {
+      let chunk = process.stdin.read()
+
+      while (chunk) {
+        buffer = Buffer.concat([buffer, chunk])
+        chunk = process.stdin.read()
+
+        if (tryParse()) {
+          cleanup()
+          return
+        }
       }
     }
 
     function onEnd() {
-      reject(new Error('Native host stream ended'))
+      if (!tryParse()) {
+        reject(new Error('Incomplete native message'))
+      }
+
+      cleanup()
+    }
+
+    function cleanup() {
+      process.stdin.removeListener('readable', onReadable)
+      process.stdin.removeListener('end', onEnd)
     }
 
     process.stdin.on('readable', onReadable)
     process.stdin.on('end', onEnd)
     onReadable()
   })
-}
-
-async function readMessage() {
-  const header = await readExactly(4)
-  const length = header.readUInt32LE(0)
-  const body = await readExactly(length)
-  return JSON.parse(body.toString('utf8'))
 }
 
 function sendMessage(message) {
@@ -65,95 +73,61 @@ function sendMessage(message) {
   process.stdout.write(body)
 }
 
-function escapeAppleScript(value) {
-  return value.replace(/\\/g, '\\\\').replace(/"/g, '\\"')
-}
+async function handleCheck(name) {
+  const normalizedName = name?.trim().toLowerCase()
 
-function cleanupStalePidFile() {
-  if (!fs.existsSync(PID_FILE)) {
-    return
+  if (!normalizedName) {
+    return { ok: false, error: 'Field "name" is required' }
   }
 
-  try {
-    const pid = Number(fs.readFileSync(PID_FILE, 'utf8').trim())
-    process.kill(pid, 0)
-  } catch {
-    fs.unlinkSync(PID_FILE)
+  const record = getDomainRecord(normalizedName)
+
+  return {
+    ok: true,
+    data: record ?? 'no record',
   }
 }
 
-function isPortInUse(port) {
-  try {
-    execSync(`lsof -ti tcp:${port}`, { stdio: 'ignore' })
-    return true
-  } catch {
-    return false
+async function handleSend(message) {
+  const { name, address, content } = message
+
+  if (!name || typeof name !== 'string') {
+    return { ok: false, error: 'Field "name" is required' }
   }
-}
 
-function isServerRunning() {
-  cleanupStalePidFile()
+  if (!Array.isArray(address) || address.length === 0) {
+    return { ok: false, error: 'Field "address" must be a non-empty array' }
+  }
 
-  if (fs.existsSync(PID_FILE)) {
-    try {
-      const pid = Number(fs.readFileSync(PID_FILE, 'utf8').trim())
-      process.kill(pid, 0)
-      return true
-    } catch {
-      cleanupStalePidFile()
+  if (!content?.subject || !content?.body) {
+    return {
+      ok: false,
+      error: 'Field "content.subject" and "content.body" are required',
     }
   }
 
-  return isPortInUse(readPort())
-}
-
-function startServerInTerminal() {
-  if (isServerRunning()) {
-    return { ok: true, alreadyRunning: true }
-  }
-
-  const shellCommand = [
-    `cd '${SERVER_DIR.replace(/'/g, `'\\''`)}'`,
-    'exec node --env-file=.env src/index.js',
-  ].join(' && ')
-
-  const result = spawnSync('osascript', [
-    '-e',
-    'tell application "Terminal" to activate',
-    '-e',
-    `tell application "Terminal" to do script "${escapeAppleScript(shellCommand)}"`,
-  ])
-
-  if (result.status !== 0) {
-    throw new Error(result.stderr?.toString() || 'Failed to open Terminal')
-  }
-
-  return { ok: true, started: true }
-}
-
-function stopServer() {
-  const port = readPort()
-
-  if (fs.existsSync(PID_FILE)) {
-    try {
-      const pid = Number(fs.readFileSync(PID_FILE, 'utf8').trim())
-      process.kill(pid, 'SIGTERM')
-    } catch {
-      // pid file stale
-    }
+  if (!isSmtpConfigured()) {
+    return { ok: false, error: 'SMTP is not configured in native/.env' }
   }
 
   try {
-    execSync(`lsof -ti tcp:${port} | xargs kill -TERM 2>/dev/null || true`, {
-      stdio: 'ignore',
+    const uniqueAddresses = dedupeAddresses(address)
+    const sentTo = await sendEmails({
+      addresses: uniqueAddresses,
+      subject: content.subject,
+      body: content.body,
     })
-  } catch {
-    // no process on port
+
+    return {
+      ok: true,
+      data: saveSendResult(name, sentTo),
+    }
+  } catch (error) {
+    return {
+      ok: false,
+      error: error instanceof Error ? error.message : String(error),
+    }
   }
-
-  cleanupStalePidFile()
-
-  return { ok: true, stopped: true }
 }
 
 async function handleMessage(message) {
@@ -161,30 +135,28 @@ async function handleMessage(message) {
     case 'ping':
       return {
         ok: true,
-        extensionId: EXTENSION_ID,
-        serverDir: SERVER_DIR,
-        running: isServerRunning(),
+        smtp: isSmtpConfigured(),
       }
-    case 'start':
-      return startServerInTerminal()
-    case 'stop':
-      return stopServer()
-    case 'status':
-      return { ok: true, running: isServerRunning() }
+    case 'check':
+      return handleCheck(message.name)
+    case 'send':
+      return handleSend(message)
     default:
       return { ok: false, error: `Unknown action: ${message.action}` }
   }
 }
 
 async function main() {
-  while (true) {
+  try {
     const message = await readMessage()
     const response = await handleMessage(message)
     sendMessage(response)
+  } catch (error) {
+    sendMessage({
+      ok: false,
+      error: error instanceof Error ? error.message : String(error),
+    })
   }
 }
 
-main().catch((error) => {
-  console.error('[hawk-sender-native-host]', error)
-  process.exit(1)
-})
+main()

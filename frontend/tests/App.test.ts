@@ -40,20 +40,6 @@ vi.mock('@/popup/composables/useManualSend', () => ({
   })),
 }))
 
-vi.mock('@/popup/composables/useServerControl', () => ({
-  useServerControl: vi.fn(() => ({
-    loading: ref(false),
-    actionLoading: ref(false),
-    online: ref(true),
-    smtpConfigured: ref(true),
-    nativeAvailable: ref(true),
-    message: ref(''),
-    start: vi.fn(),
-    stop: vi.fn(),
-    refreshStatus: vi.fn(),
-  })),
-}))
-
 describe('App', () => {
   it('should render title without workflow label when workflow has no outcome', () => {
     // Arrange
@@ -108,7 +94,7 @@ describe('App', () => {
     expect(text).toContain('Hawk установлен')
   })
 
-  it('should render inactive workflow outcome when extension is disabled', () => {
+  it('should not render workflow outcome when extension is disabled', () => {
     // Arrange
     vi.mocked(useExtensionSettings).mockReturnValue({
       enabled: ref(false),
@@ -116,7 +102,7 @@ describe('App', () => {
       setEnabled: vi.fn(),
     })
     vi.mocked(useAutomaticWorkflowOutcome).mockReturnValue({
-      outcome: ref(WORKFLOW_OUTCOMES.AUTO_SEND_INACTIVE),
+      outcome: ref(WORKFLOW_OUTCOMES.EMAIL_SEND_FAILED),
       loading: ref(false),
       refresh: vi.fn(),
     })
@@ -126,7 +112,8 @@ describe('App', () => {
     const text = wrapper.text()
 
     // Assert
-    expect(text).toContain('Автоматическая отправка неактивна')
+    expect(text).not.toContain('Ошибка helper')
+    expect(text).not.toContain('Автоматическая отправка неактивна')
   })
 
   it('should render hawk and sentry integration indicators', () => {
@@ -149,14 +136,5 @@ describe('App', () => {
 
     // Assert
     expect(wrapper.text()).toContain('Отправить вручную')
-  })
-
-  it('should render server control section', () => {
-    // Arrange
-    const wrapper = mount(App)
-
-    // Assert
-    expect(wrapper.text()).toContain('Server')
-    expect(wrapper.text()).toContain('Остановить')
   })
 })

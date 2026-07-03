@@ -1,0 +1,13 @@
+{
+  "name": "hawk-sender-native",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "db:clear": "node --env-file=.env scripts/clearDb.js"
+  },
+  "dependencies": {
+    "better-sqlite3": "^11.9.0",
+    "nodemailer": "^6.10.0"
+  }
+}

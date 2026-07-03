@@ -1,4 +1,7 @@
-import { getApiBaseUrl } from '@/shared/api/config'
+import {
+  invokeNativeHost,
+  type NativeHostDataResponse,
+} from '@/shared/native/nativeClient'
 import type {
   DomainCheckRecord,
   DomainCheckResponse,
@@ -6,48 +9,36 @@ import type {
   SendLetterResponse,
 } from '@/shared/api/types'
 
-function buildApiUrl(path: string): string {
-  return `${getApiBaseUrl().replace(/\/$/, '')}${path}`
-}
-
 export async function checkDomain(name: string): Promise<DomainCheckResponse> {
-  const response = await fetch(buildApiUrl(`/check/${encodeURIComponent(name)}`))
+  const response = await invokeNativeHost<
+    NativeHostDataResponse<DomainCheckRecord | 'no record'>
+  >({
+    action: 'check',
+    name,
+  })
 
   if (!response.ok) {
-    throw new Error(`Domain check failed with status ${response.status}`)
+    throw new Error(response.error ?? 'Domain check failed')
   }
 
-  const data: unknown = await response.json()
-
-  if (data === 'no record') {
-    return 'no record'
-  }
-
-  return data as DomainCheckRecord
+  return response.data ?? 'no record'
 }
 
 export async function sendLetter(
   payload: SendLetterPayload,
 ): Promise<SendLetterResponse> {
-  const response = await fetch(buildApiUrl('/send'), {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(payload),
+  const response = await invokeNativeHost<NativeHostDataResponse<SendLetterResponse>>({
+    action: 'send',
+    name: payload.name,
+    address: payload.address,
+    content: payload.content,
   })
 
-  if (!response.ok) {
-    throw new Error(`Send letter failed with status ${response.status}`)
+  if (!response.ok || !response.data) {
+    throw new Error(response.error ?? 'Send letter failed')
   }
 
-  return (await response.json()) as SendLetterResponse
+  return response.data
 }
 
-export function hasSuccessfulSend(record: DomainCheckRecord): boolean {
-  return record.sentTo.some((entry) => entry.status)
-}
-
-export function getSuccessfulRecipients(record: DomainCheckRecord): string[] {
-  return record.sentTo.filter((entry) => entry.status).map((entry) => entry.to)
-}
+export { getSuccessfulRecipients, hasSuccessfulSend } from '@/shared/api/sendRecord'

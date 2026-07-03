@@ -9,10 +9,6 @@ import {
   WORKFLOW_OUTCOMES,
 } from '@/shared/workflow/outcomes'
 
-vi.mock('@/shared/api/config', () => ({
-  getApiBaseUrl: vi.fn(() => 'https://api.example.com'),
-}))
-
 vi.mock('@/shared/storage/settingsStorage', () => ({
   isExtensionEnabled: vi.fn(),
 }))
@@ -33,14 +29,10 @@ vi.mock('@/shared/storage/pageIntegrationsStorage', () => {
   }
 })
 
-vi.mock('@/shared/api/domainApi', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/shared/api/domainApi')>()
-  return {
-    ...actual,
-    checkDomain: vi.fn(),
-    sendLetter: vi.fn(),
-  }
-})
+vi.mock('@/shared/api/domainApi', () => ({
+  checkDomain: vi.fn(),
+  sendLetter: vi.fn(),
+}))
 
 vi.mock('@/shared/recipients/resolveDomainSendAddresses', () => ({
   resolveDomainSendAddresses: vi.fn(),
@@ -262,7 +254,7 @@ describe('resolvePopupOutcome', () => {
     expect(display.color).toBe(2)
   })
 
-  it('should show EMAIL_ALREADY_SENT_WITHIN_HALF_YEAR message and red color from outcome', () => {
+  it('should show EMAIL_ALREADY_SENT_WITHIN_HALF_YEAR message and neutral color from outcome', () => {
     // Arrange
     const outcome = WORKFLOW_OUTCOMES.EMAIL_ALREADY_SENT_WITHIN_HALF_YEAR
 
@@ -271,7 +263,7 @@ describe('resolvePopupOutcome', () => {
 
     // Assert
     expect(display.message).toBe('Письмо уже отправлялось за последние полгода')
-    expect(display.color).toBe(1)
+    expect(display.color).toBe(3)
   })
 
   it('should show EMAIL_SENT message and green color from outcome', () => {
@@ -286,16 +278,28 @@ describe('resolvePopupOutcome', () => {
     expect(display.color).toBe(2)
   })
 
-  it('should show EMAIL_SEND_FAILED message and red color from outcome', () => {
+  it('should show EMAIL_HELPER_ERROR message and red color from outcome', () => {
     // Arrange
-    const outcome = WORKFLOW_OUTCOMES.EMAIL_SEND_FAILED
+    const outcome = WORKFLOW_OUTCOMES.EMAIL_HELPER_ERROR
 
     // Act
     const display = resolvePopupOutcome(outcome, false)
 
     // Assert
-    expect(display.message).toBe('Не удалось отправить письмо')
+    expect(display.message).toBe('Ошибка helper')
     expect(display.color).toBe(1)
+  })
+
+  it('should show EMAIL_NO_DELIVERY message and neutral color from outcome', () => {
+    // Arrange
+    const outcome = WORKFLOW_OUTCOMES.EMAIL_NO_DELIVERY
+
+    // Act
+    const display = resolvePopupOutcome(outcome, false)
+
+    // Assert
+    expect(display.message).toBe('Ни на один адрес не доставлено')
+    expect(display.color).toBe(3)
   })
 
   it('should show loading message without outcome color while loading', () => {

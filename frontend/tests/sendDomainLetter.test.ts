@@ -41,12 +41,12 @@ describe('sendDomainLetter', () => {
     })
   })
 
-  it('should stop workflow with EMAIL_SEND_FAILED when core send fails', async () => {
+  it('should stop workflow with EMAIL_NO_DELIVERY when no address accepted mail', async () => {
     // Arrange
     vi.mocked(sendDomainLetterForTab).mockResolvedValue({
       status: 'failed',
       domain: 'example.com',
-      reason: 'send_failed',
+      reason: 'no_delivery',
     })
 
     // Act
@@ -55,7 +55,29 @@ describe('sendDomainLetter', () => {
     // Assert
     expect(result).toEqual({
       type: 'stop',
-      outcome: WORKFLOW_OUTCOMES.EMAIL_SEND_FAILED,
+      outcome: WORKFLOW_OUTCOMES.EMAIL_NO_DELIVERY,
+    })
+  })
+
+  it('should stop workflow with EMAIL_HELPER_ERROR when helper fails', async () => {
+    // Arrange
+    vi.mocked(sendDomainLetterForTab).mockResolvedValue({
+      status: 'failed',
+      domain: 'example.com',
+      reason: 'helper_error',
+      error: 'Native helper unavailable',
+    })
+
+    // Act
+    const result = await sendDomainLetter(workflowContext)
+
+    // Assert
+    expect(result).toEqual({
+      type: 'stop',
+      outcome: {
+        ...WORKFLOW_OUTCOMES.EMAIL_HELPER_ERROR,
+        message: 'Ошибка helper: Native helper unavailable',
+      },
     })
   })
 

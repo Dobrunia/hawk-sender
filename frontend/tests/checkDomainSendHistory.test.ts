@@ -54,6 +54,24 @@ describe('checkDomainSendHistory', () => {
     })
   })
 
+  it('should continue when all sends failed even if record is recent', async () => {
+    // Arrange
+    vi.mocked(checkDomain).mockResolvedValue({
+      name: 'example.com',
+      sentTo: [
+        { to: 'sales@example.com', status: false },
+        { to: 'hello@example.com', status: false },
+      ],
+      updatedAt: '2026-04-01T12:00:00.000Z',
+    })
+
+    // Act
+    const result = await checkDomainSendHistory(workflowContext)
+
+    // Assert
+    expect(result).toEqual({ type: 'continue' })
+  })
+
   it('should continue when last send is older than six months', async () => {
     // Arrange
     vi.mocked(checkDomain).mockResolvedValue({

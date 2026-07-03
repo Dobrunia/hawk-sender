@@ -1,6 +1,7 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import Database from 'better-sqlite3'
+import { mergeSentToEntries } from './mergeSentTo.js'
 
 const databasePath = process.env.DATABASE_PATH ?? './data/hawk-sender.db'
 
@@ -44,10 +45,10 @@ export function getDomainRecord(name) {
   }
 }
 
-export function saveSendResult(name, sentTo) {
+const saveSendResultTx = db.transaction((name, sentTo) => {
   const normalizedName = name.toLowerCase()
   const existing = getDomainRecord(normalizedName)
-  const mergedSentTo = existing ? [...existing.sentTo, ...sentTo] : sentTo
+  const mergedSentTo = mergeSentToEntries(existing?.sentTo, sentTo)
   const updatedAt = new Date().toISOString()
 
   upsertRecord.run({
@@ -61,4 +62,8 @@ export function saveSendResult(name, sentTo) {
     sentTo: mergedSentTo,
     updatedAt,
   }
+})
+
+export function saveSendResult(name, sentTo) {
+  return saveSendResultTx(name, sentTo)
 }

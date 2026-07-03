@@ -1,8 +1,10 @@
 import { existsSync } from 'node:fs'
-import { defineConfig } from 'vite'
+import { defineConfig, loadEnv } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import webExtension from 'vite-plugin-web-extension'
 import { fileURLToPath, URL } from 'node:url'
+
+const frontendDir = fileURLToPath(new URL('.', import.meta.url))
 
 const ZEN_BROWSER_PATHS = [
   '/Applications/Zen.app/Contents/MacOS/zen',
@@ -38,38 +40,32 @@ else if (!browserBinary) {
   )
 }
 
-export default defineConfig({
-  root: 'src',
-  publicDir: '../assets',
-  plugins: [
-    vue(),
-    webExtension({
-      manifest: 'manifest.json',
-      browser: 'firefox',
-      disableAutoLaunch: !autoLaunchBrowser || !browserBinary,
-      webExtConfig: autoLaunchBrowser && browserBinary
-        ? { firefox: browserBinary }
-        : undefined,
-      transformManifest(manifest) {
-        const apiBaseUrl = process.env.VITE_API_BASE_URL?.trim()
+export default defineConfig(({ mode }) => {
+  loadEnv(mode, frontendDir, '')
 
-        if (!apiBaseUrl) {
-          throw new Error('VITE_API_BASE_URL is required for build')
-        }
-
-        manifest.host_permissions = [`${apiBaseUrl.replace(/\/$/, '')}/*`]
-
-        return manifest
+  return {
+    root: 'src',
+    envDir: frontendDir,
+    publicDir: '../assets',
+    plugins: [
+      vue(),
+      webExtension({
+        manifest: 'manifest.json',
+        browser: 'firefox',
+        disableAutoLaunch: !autoLaunchBrowser || !browserBinary,
+        webExtConfig: autoLaunchBrowser && browserBinary
+          ? { firefox: browserBinary }
+          : undefined,
+      }),
+    ],
+    resolve: {
+      alias: {
+        '@': fileURLToPath(new URL('./src', import.meta.url)),
       },
-    }),
-  ],
-  resolve: {
-    alias: {
-      '@': fileURLToPath(new URL('./src', import.meta.url)),
     },
-  },
-  build: {
-    outDir: '../dist',
-    emptyOutDir: true,
-  },
+    build: {
+      outDir: '../dist',
+      emptyOutDir: true,
+    },
+  }
 })

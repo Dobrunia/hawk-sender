@@ -14,11 +14,15 @@ vi.mock('@/shared/integrations/readPageIntegrations', () => ({
 
 vi.mock('@/shared/api/domainApi', () => ({
   sendLetter: vi.fn(),
+}))
+
+vi.mock('@/shared/api/sendRecord', () => ({
   hasSuccessfulSend: vi.fn(),
   getSuccessfulRecipients: vi.fn(),
 }))
 
-import { getSuccessfulRecipients, hasSuccessfulSend, sendLetter } from '@/shared/api/domainApi'
+import { sendLetter } from '@/shared/api/domainApi'
+import { getSuccessfulRecipients, hasSuccessfulSend } from '@/shared/api/sendRecord'
 import { readSentryInstalled } from '@/shared/integrations/readPageIntegrations'
 import { resolveDomainSendAddresses } from '@/shared/recipients/resolveDomainSendAddresses'
 
@@ -79,7 +83,26 @@ describe('sendDomainLetterForTab', () => {
     expect(result).toEqual({
       status: 'failed',
       domain: 'example.com',
-      reason: 'send_failed',
+      reason: 'no_delivery',
+    })
+  })
+
+  it('should return helper_error when native send throws', async () => {
+    // Arrange
+    vi.mocked(sendLetter).mockRejectedValue(new Error('Native helper unavailable'))
+
+    // Act
+    const result = await sendDomainLetterForTab({
+      tabId: 1,
+      tabUrl: 'https://example.com/page',
+    })
+
+    // Assert
+    expect(result).toEqual({
+      status: 'failed',
+      domain: 'example.com',
+      reason: 'helper_error',
+      error: 'Native helper unavailable',
     })
   })
 
@@ -119,16 +142,30 @@ describe('formatManualSendResult', () => {
     expect(formatted.color).toBe(2)
   })
 
-  it('should format failure message', () => {
+  it('should format no delivery as neutral message', () => {
     // Act
     const formatted = formatManualSendResult({
       status: 'failed',
       domain: 'example.com',
-      reason: 'send_failed',
+      reason: 'no_delivery',
     })
 
     // Assert
-    expect(formatted.message).toBe('Не удалось отправить письмо')
+    expect(formatted.message).toBe('Ни на один адрес не доставлено')
+    expect(formatted.color).toBe(3)
+  })
+
+  it('should format helper error message', () => {
+    // Act
+    const formatted = formatManualSendResult({
+      status: 'failed',
+      domain: 'example.com',
+      reason: 'helper_error',
+      error: 'Native helper unavailable',
+    })
+
+    // Assert
+    expect(formatted.message).toBe('Ошибка helper: Native helper unavailable')
     expect(formatted.color).toBe(1)
   })
 })

@@ -19,51 +19,48 @@ function getSmtpConfig() {
   }
 }
 
-let transporter = null
-let fromAddress = null
-
-function getTransporter() {
-  const config = getSmtpConfig()
-
-  if (!config) {
-    return null
-  }
-
-  if (!transporter) {
-    transporter = nodemailer.createTransport({
-      host: config.host,
-      port: config.port,
-      secure: config.secure,
-      auth: config.auth,
-    })
-    fromAddress = config.from
-  }
-
-  return transporter
-}
-
 export function isSmtpConfigured() {
   return getSmtpConfig() !== null
 }
 
-export async function sendEmails({ addresses, subject, body }) {
-  const mailer = getTransporter()
+export async function sendEmails({
+  addresses,
+  subject,
+  body,
+  stopOnFirstSuccess = true,
+}) {
+  const config = getSmtpConfig()
 
-  if (!mailer) {
+  if (!config) {
     throw new Error('SMTP is not configured')
   }
+
+  const rejectUnauthorized = process.env.SMTP_TLS_REJECT_UNAUTHORIZED !== 'false'
+  const transporter = nodemailer.createTransport({
+    host: config.host,
+    port: config.port,
+    secure: config.secure,
+    auth: config.auth,
+    tls: {
+      rejectUnauthorized,
+    },
+  })
 
   const results = []
 
   for (const to of addresses) {
     try {
-      await mailer.sendMail({
-        from: fromAddress,
+      await transporter.sendMail({
+        from: config.from,
         to,
         subject,
         text: body,
       })
       results.push({ to, status: true })
+
+      if (stopOnFirstSuccess) {
+        break
+      }
     } catch (error) {
       console.error(`[smtp] failed to send to ${to}:`, error.message)
       results.push({ to, status: false })

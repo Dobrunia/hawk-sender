@@ -1,0 +1,31 @@
+{
+  "manifest_version": 3,
+  "name": "Hawk Sender",
+  "version": "1.0.0",
+  "description": "Firefox extension",
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "hawk-sender@dobrunia.local",
+      "strict_min_version": "109.0"
+    }
+  },
+  "icons": {
+    "48": "icon-48.png",
+    "96": "icon-96.png",
+    "128": "icon-128.png"
+  },
+  "action": {
+    "default_popup": "popup/index.html",
+    "default_title": "Hawk Sender",
+    "default_icon": {
+      "16": "icon-16.png",
+      "32": "icon-32.png",
+      "48": "icon-48.png"
+    }
+  },
+  "background": {
+    "scripts": ["background.ts"],
+    "type": "module"
+  },
+  "permissions": ["storage", "tabs", "scripting", "activeTab"]
+}

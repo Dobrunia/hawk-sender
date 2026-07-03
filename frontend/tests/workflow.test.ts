@@ -1,14 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { runAutomaticWorkflow } from '@/shared/workflow/automaticWorkflow'
+import type { WorkflowContext, WorkflowStep } from '@/shared/workflow/types'
 import { runWorkflowSteps } from '@/shared/workflow/runner'
 import { checkExtensionEnabled } from '@/shared/workflow/steps/checkExtensionEnabled'
-import { getWorkflowOutcome, WORKFLOW_OUTCOMES } from '@/shared/workflow/outcomes'
-import type { WorkflowContext, WorkflowStep } from '@/shared/workflow/types'
 import {
-  getPopupWorkflowLabel,
-  isPopupWorkflowInactive,
-  resolvePopupWorkflowOutcome,
-} from '@/shared/workflow/popupWorkflow'
+  getWorkflowOutcome,
+  resolvePopupOutcome,
+  WORKFLOW_OUTCOMES,
+} from '@/shared/workflow/outcomes'
 
 vi.mock('@/shared/storage/settingsStorage', () => ({
   isExtensionEnabled: vi.fn(),
@@ -87,7 +86,21 @@ describe('checkExtensionEnabled', () => {
     })
   })
 
-  it('should continue workflow when extension is enabled', async () => {
+  it('should continue workflow when extension is enabled via context', async () => {
+    // Arrange
+    vi.mocked(isExtensionEnabled).mockResolvedValue(false)
+
+    // Act
+    const result = await checkExtensionEnabled({
+      ...workflowContext,
+      enabled: true,
+    })
+
+    // Assert
+    expect(result).toEqual({ type: 'continue' })
+  })
+
+  it('should continue workflow when extension is enabled in storage', async () => {
     // Arrange
     vi.mocked(isExtensionEnabled).mockResolvedValue(true)
 
@@ -147,42 +160,51 @@ describe('runAutomaticWorkflow', () => {
   })
 })
 
-describe('popupWorkflow', () => {
-  it('should show AUTO_SEND_INACTIVE message when extension is disabled', () => {
+describe('resolvePopupOutcome', () => {
+  it('should show AUTO_SEND_INACTIVE message and red color from outcome', () => {
     // Arrange
-    // extension disabled, not loading
+    const outcome = WORKFLOW_OUTCOMES.AUTO_SEND_INACTIVE
 
     // Act
-    const label = getPopupWorkflowLabel(false, false)
-    const outcome = resolvePopupWorkflowOutcome(false, false)
+    const display = resolvePopupOutcome(outcome, false)
 
     // Assert
-    expect(label).toBe('Автоматическая отправка неактивна')
-    expect(outcome).toEqual(WORKFLOW_OUTCOMES.AUTO_SEND_INACTIVE)
-    expect(isPopupWorkflowInactive(false, false)).toBe(true)
+    expect(display.message).toBe('Автоматическая отправка неактивна')
+    expect(display.color).toBe(1)
   })
 
-  it('should show loading label while settings are loading', () => {
+  it('should show HAWK_INSTALLED message and green color from outcome', () => {
+    // Arrange
+    const outcome = WORKFLOW_OUTCOMES.HAWK_INSTALLED
+
+    // Act
+    const display = resolvePopupOutcome(outcome, false)
+
+    // Assert
+    expect(display.message).toBe('Hawk установлен')
+    expect(display.color).toBe(2)
+  })
+
+  it('should show loading message without outcome color while loading', () => {
     // Arrange
     // loading state
 
     // Act
-    const label = getPopupWorkflowLabel(true, true)
+    const display = resolvePopupOutcome(null, true)
 
     // Assert
-    expect(label).toBe('Загрузка…')
-    expect(resolvePopupWorkflowOutcome(true, true)).toBeNull()
+    expect(display.message).toBe('Загрузка…')
+    expect(display.color).toBeNull()
   })
 
-  it('should show active label when extension is enabled', () => {
+  it('should return empty display when workflow has no outcome', () => {
     // Arrange
-    // extension enabled, not loading
+    // no outcome, not loading
 
     // Act
-    const label = getPopupWorkflowLabel(true, false)
+    const display = resolvePopupOutcome(null, false)
 
     // Assert
-    expect(label).toBe('Активно')
-    expect(isPopupWorkflowInactive(true, false)).toBe(false)
+    expect(display).toEqual({ message: '', color: null })
   })
 })

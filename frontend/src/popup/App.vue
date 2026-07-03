@@ -1,20 +1,36 @@
 <script setup lang="ts">
+import { computed } from 'vue'
 import EnableToggle from './components/EnableToggle.vue'
 import HawkIcon from './components/HawkIcon.vue'
 import IntegrationIndicator from './components/IntegrationIndicator.vue'
+import { useAutomaticWorkflowOutcome } from './composables/useAutomaticWorkflowOutcome'
 import { useExtensionSettings } from './composables/useExtensionSettings'
 import { usePageIntegrations } from './composables/usePageIntegrations'
 import {
-  getPopupWorkflowLabel,
-  isPopupWorkflowInactive,
-} from '@/shared/workflow/popupWorkflow'
+  getOutcomeColorValue,
+  resolvePopupOutcome,
+} from '@/shared/workflow/outcomes'
 
-const { enabled, loading, setEnabled } = useExtensionSettings()
+const { enabled, loading: settingsLoading, setEnabled } = useExtensionSettings()
+const { outcome, loading: workflowLoading, refresh: refreshWorkflow } = useAutomaticWorkflowOutcome(enabled)
 const {
   hawk,
   sentry,
   loading: integrationsLoading,
 } = usePageIntegrations()
+
+const loading = computed(() => settingsLoading.value || workflowLoading.value)
+const workflowDisplay = computed(() => resolvePopupOutcome(outcome.value, loading.value))
+const workflowColor = computed(() =>
+  workflowDisplay.value.color
+    ? getOutcomeColorValue(workflowDisplay.value.color)
+    : '#64748b',
+)
+
+async function handleSetEnabled(value: boolean) {
+  await setEnabled(value)
+  await refreshWorkflow()
+}
 </script>
 
 <template>
@@ -25,17 +41,18 @@ const {
         <HawkIcon class="popup__title-icon" />
       </h1>
       <p
+        v-if="workflowDisplay.message"
         class="popup__workflow"
-        :class="{ 'popup__workflow--off': isPopupWorkflowInactive(enabled, loading) }"
+        :style="{ color: workflowColor }"
       >
-        {{ getPopupWorkflowLabel(enabled, loading) }}
+        {{ workflowDisplay.message }}
       </p>
     </header>
 
     <EnableToggle
       :model-value="enabled"
-      :disabled="loading"
-      @update:model-value="setEnabled"
+      :disabled="settingsLoading"
+      @update:model-value="handleSetEnabled"
     />
 
     <section class="popup__integrations" aria-label="На текущей странице">
@@ -81,11 +98,6 @@ const {
 .popup__workflow {
   margin: 4px 0 0;
   font-size: 0.75rem;
-  color: #16a34a;
-}
-
-.popup__workflow--off {
-  color: #64748b;
 }
 
 .popup__integrations {

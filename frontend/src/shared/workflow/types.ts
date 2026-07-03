@@ -3,6 +3,8 @@ import type { WorkflowOutcome } from '@/shared/workflow/outcomes'
 export interface WorkflowContext {
   tabId: number
   tabUrl: string
+  /** актуальное значение toggle — для popup без гонки со storage */
+  enabled?: boolean
 }
 
 export type WorkflowStepResult =

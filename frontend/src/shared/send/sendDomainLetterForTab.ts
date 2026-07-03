@@ -116,7 +116,7 @@ export function formatManualSendResult(result: SendDomainLetterResult): {
   if (result.reason === 'no_delivery') {
     return {
       message: result.error
-        ? `Ошибка SMTP: ${result.error}`
+        ? formatSmtpFailureMessage(result.error)
         : 'Ошибка отправки: SMTP не принял письмо ни на один адрес',
       color: 1,
     }
@@ -130,7 +130,21 @@ export function formatManualSendResult(result: SendDomainLetterResult): {
   }
 }
 
+function formatSmtpFailureMessage(error: string): string {
+  if (error.startsWith('SMTP лимит отправки:')) {
+    return error
+  }
+
+  return `Ошибка SMTP: ${error}`
+}
+
 function getSmtpError(sentTo: SentToEntry[]): string | undefined {
+  const rateLimit = sentTo.find((entry) => entry.errorCode === 'rate_limit')
+
+  if (rateLimit?.error) {
+    return rateLimit.error
+  }
+
   const errors = sentTo
     .filter((entry) => !entry.status && entry.error)
     .map((entry) => `${entry.to}: ${entry.error}`)

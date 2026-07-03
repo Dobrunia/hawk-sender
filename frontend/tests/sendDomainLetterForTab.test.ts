@@ -117,6 +117,43 @@ describe('sendDomainLetterForTab', () => {
     })
   })
 
+  it('should collapse SMTP rate limit errors into a short message', async () => {
+    // Arrange
+    vi.mocked(sendLetter).mockResolvedValue({
+      name: 'example.com',
+      sentTo: [
+        {
+          to: 'contact@example.com',
+          status: false,
+          error: 'SMTP лимит отправки: подождите до 1 часа',
+          errorCode: 'rate_limit',
+          retryAfter: 'до 1 часа',
+        },
+        {
+          to: 'info@example.com',
+          status: false,
+          error: 'Another repeated rate limit error',
+        },
+      ],
+      updatedAt: '2026-07-03T12:00:00.000Z',
+    })
+    vi.mocked(hasSuccessfulSend).mockReturnValue(false)
+
+    // Act
+    const result = await sendDomainLetterForTab({
+      tabId: 1,
+      tabUrl: 'https://example.com',
+    })
+
+    // Assert
+    expect(result).toEqual({
+      status: 'failed',
+      domain: 'example.com',
+      reason: 'no_delivery',
+      error: 'SMTP лимит отправки: подождите до 1 часа',
+    })
+  })
+
   it('should return helper_error when native send throws', async () => {
     // Arrange
     vi.mocked(sendLetter).mockRejectedValue(new Error('Native helper unavailable'))
@@ -200,6 +237,20 @@ describe('formatManualSendResult', () => {
     expect(formatted.message).toBe(
       'Ошибка SMTP: team@example.com: Invalid login',
     )
+    expect(formatted.color).toBe(1)
+  })
+
+  it('should format rate limit without duplicating SMTP prefix', () => {
+    // Act
+    const formatted = formatManualSendResult({
+      status: 'failed',
+      domain: 'example.com',
+      reason: 'no_delivery',
+      error: 'SMTP лимит отправки: подождите до 1 часа',
+    })
+
+    // Assert
+    expect(formatted.message).toBe('SMTP лимит отправки: подождите до 1 часа')
     expect(formatted.color).toBe(1)
   })
 

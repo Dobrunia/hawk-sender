@@ -42,6 +42,8 @@ function setSentToEntry(byEmail, entry) {
     to: existing?.to ?? entry.to,
     status: Boolean(entry.status),
     ...(entry.error ? { error: String(entry.error) } : {}),
+    ...(entry.errorCode ? { errorCode: String(entry.errorCode) } : {}),
+    ...(entry.retryAfter ? { retryAfter: String(entry.retryAfter) } : {}),
   })
 }
 

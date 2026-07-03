@@ -14,6 +14,8 @@ export interface SentToEntry {
   /** true means the outgoing SMTP server accepted the message, not final delivery. */
   status: boolean
   error?: string
+  errorCode?: string
+  retryAfter?: string
 }
 
 export interface DomainCheckRecord {

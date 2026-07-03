@@ -26,7 +26,56 @@ function getErrorMessage(error) {
   return error instanceof Error ? error.message : String(error)
 }
 
+function formatRetryAfter(windowValue, windowUnit) {
+  const value = Math.ceil(Number(windowValue))
+
+  if (!Number.isFinite(value) || value <= 0) {
+    return 'некоторое время'
+  }
+
+  if (windowUnit === 'h') {
+    return value === 1 ? 'до 1 часа' : `до ${value} часов`
+  }
+
+  if (windowUnit === 'm') {
+    return value === 1 ? 'до 1 минуты' : `до ${value} минут`
+  }
+
+  if (windowUnit === 's') {
+    return value === 1 ? 'до 1 секунды' : `до ${value} секунд`
+  }
+
+  if (windowUnit === 'd') {
+    return value === 1 ? 'до 1 дня' : `до ${value} дней`
+  }
+
+  return 'некоторое время'
+}
+
+function parseRateLimitError(message) {
+  if (!/sender rate overlimit/i.test(message)) {
+    return null
+  }
+
+  const match = message.match(/-\s*[\d.]+\s*\/\s*(\d+(?:\.\d+)?)([smhd])\b/i)
+  const retryAfter = match
+    ? formatRetryAfter(match[1], match[2].toLowerCase())
+    : 'некоторое время'
+
+  return {
+    errorCode: 'rate_limit',
+    retryAfter,
+    message: `SMTP лимит отправки: подождите ${retryAfter}`,
+  }
+}
+
 export function formatSmtpError(results) {
+  const rateLimit = results.find((entry) => entry.errorCode === 'rate_limit')
+
+  if (rateLimit?.error) {
+    return rateLimit.error
+  }
+
   return results
     .filter((entry) => !entry.status && entry.error)
     .map((entry) => `${entry.to}: ${entry.error}`)
@@ -74,7 +123,21 @@ export async function sendEmails({
       results.push({ to, status: true })
     } catch (error) {
       const message = getErrorMessage(error)
+      const rateLimit = parseRateLimitError(message)
+
       console.error(`[smtp] failed to send to ${to}:`, message)
+
+      if (rateLimit) {
+        results.push({
+          to,
+          status: false,
+          error: rateLimit.message,
+          errorCode: rateLimit.errorCode,
+          retryAfter: rateLimit.retryAfter,
+        })
+        break
+      }
+
       results.push({ to, status: false, error: message })
     }
   }

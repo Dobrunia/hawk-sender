@@ -11,7 +11,9 @@ export interface SendLetterPayload {
 
 export interface SentToEntry {
   to: string
+  /** true means the outgoing SMTP server accepted the message, not final delivery. */
   status: boolean
+  error?: string
 }
 
 export interface DomainCheckRecord {

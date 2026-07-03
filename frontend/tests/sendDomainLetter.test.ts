@@ -59,6 +59,28 @@ describe('sendDomainLetter', () => {
     })
   })
 
+  it('should include SMTP acceptance error in EMAIL_NO_DELIVERY outcome', async () => {
+    // Arrange
+    vi.mocked(sendDomainLetterForTab).mockResolvedValue({
+      status: 'failed',
+      domain: 'example.com',
+      reason: 'no_delivery',
+      error: 'team@example.com: Invalid login',
+    })
+
+    // Act
+    const result = await sendDomainLetter(workflowContext)
+
+    // Assert
+    expect(result).toEqual({
+      type: 'stop',
+      outcome: {
+        ...WORKFLOW_OUTCOMES.EMAIL_NO_DELIVERY,
+        message: 'Ошибка SMTP: team@example.com: Invalid login',
+      },
+    })
+  })
+
   it('should stop workflow with EMAIL_HELPER_ERROR when helper fails', async () => {
     // Arrange
     vi.mocked(sendDomainLetterForTab).mockResolvedValue({

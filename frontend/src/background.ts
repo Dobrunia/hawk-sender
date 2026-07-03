@@ -15,7 +15,7 @@ browser.runtime.onInstalled.addListener(async () => {
   await ensureDefaultSettings()
 })
 
-browser.runtime.onMessage.addListener((message) => {
+browser.runtime.onMessage.addListener((message: unknown) => {
   if (isNativeHostRequest(message)) {
     const { type: _type, ...request } = message
     return handleNativeHostRequest(request)

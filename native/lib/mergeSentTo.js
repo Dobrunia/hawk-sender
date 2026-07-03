@@ -30,29 +30,30 @@ export function dedupeAddresses(addresses = []) {
   return result
 }
 
+function setSentToEntry(byEmail, entry) {
+  if (!entry?.to) {
+    return
+  }
+
+  const key = normalizeSentToEmail(entry.to)
+  const existing = byEmail.get(key)
+
+  byEmail.set(key, {
+    to: existing?.to ?? entry.to,
+    status: Boolean(entry.status),
+    ...(entry.error ? { error: String(entry.error) } : {}),
+  })
+}
+
 export function mergeSentToEntries(existing = [], incoming = []) {
   const byEmail = new Map()
 
   for (const entry of existing) {
-    if (!entry?.to) {
-      continue
-    }
-
-    byEmail.set(normalizeSentToEmail(entry.to), {
-      to: entry.to,
-      status: Boolean(entry.status),
-    })
+    setSentToEntry(byEmail, entry)
   }
 
   for (const entry of incoming) {
-    if (!entry?.to) {
-      continue
-    }
-
-    byEmail.set(normalizeSentToEmail(entry.to), {
-      to: entry.to,
-      status: Boolean(entry.status),
-    })
+    setSentToEntry(byEmail, entry)
   }
 
   return [...byEmail.values()]

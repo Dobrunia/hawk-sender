@@ -4,7 +4,8 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "db:clear": "node --env-file=.env scripts/clearDb.js"
+    "db:clear": "node --env-file=.env scripts/clearDb.js",
+    "test": "node --test tests/*.test.js"
   },
   "dependencies": {
     "better-sqlite3": "^11.9.0",

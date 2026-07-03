@@ -20,7 +20,7 @@ export const WORKFLOW_OUTCOMES = {
   AUTO_SEND_INACTIVE: {
     code: 'AUTO_SEND_INACTIVE',
     message: 'Автоматическая отправка неактивна',
-    color: 1,
+    color: 3,
     terminal: true,
   },
   HAWK_INSTALLED: {
@@ -29,22 +29,28 @@ export const WORKFLOW_OUTCOMES = {
     color: 2,
     terminal: true,
   },
+  DOMAIN_NOT_RU: {
+    code: 'DOMAIN_NOT_RU',
+    message: 'Домен не в зоне .ru',
+    color: 3,
+    terminal: true,
+  },
   EMAIL_ALREADY_SENT_WITHIN_HALF_YEAR: {
     code: 'EMAIL_ALREADY_SENT_WITHIN_HALF_YEAR',
-    message: 'Письмо уже отправлялось за последние полгода',
+    message: 'SMTP уже принимал письмо за последние полгода',
     color: 3,
     terminal: true,
   },
   EMAIL_SENT: {
     code: 'EMAIL_SENT',
-    message: 'Письмо отправлено',
+    message: 'SMTP принял письмо к отправке',
     color: 2,
     terminal: true,
   },
   EMAIL_NO_DELIVERY: {
     code: 'EMAIL_NO_DELIVERY',
-    message: 'Ни на один адрес не доставлено',
-    color: 3,
+    message: 'Ошибка отправки: SMTP не принял письмо ни на один адрес',
+    color: 1,
     terminal: true,
   },
   EMAIL_HELPER_ERROR: {

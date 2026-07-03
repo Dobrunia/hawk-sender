@@ -1,6 +1,7 @@
 import { runWorkflowSteps } from '@/shared/workflow/runner'
 import { checkDomainSendHistory } from '@/shared/workflow/steps/checkDomainSendHistory'
 import { checkExtensionEnabled } from '@/shared/workflow/steps/checkExtensionEnabled'
+import { checkRuDomain } from '@/shared/workflow/steps/checkRuDomain'
 import { sendDomainLetter } from '@/shared/workflow/steps/sendDomainLetter'
 import { stopWorkflowIfHawkInstalled } from '@/shared/workflow/steps/stopWorkflowIfHawkInstalled'
 import { syncPageIntegrationsStep } from '@/shared/workflow/steps/syncPageIntegrationsStep'
@@ -8,6 +9,7 @@ import type { WorkflowContext, WorkflowRunResult } from '@/shared/workflow/types
 
 const AUTOMATIC_WORKFLOW_STEPS = [
   checkExtensionEnabled,
+  checkRuDomain,
   syncPageIntegrationsStep,
   stopWorkflowIfHawkInstalled,
   checkDomainSendHistory,

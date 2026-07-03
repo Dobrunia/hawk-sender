@@ -33,8 +33,11 @@ if [[ -f "$ROOT_DIR/native/package.json" ]]; then
   npm install --prefix "$ROOT_DIR/native" --omit=dev
 fi
 
+NATIVE_NODE_BIN="${npm_node_execpath:-$(command -v node)}"
+
 mkdir -p "$INSTALL_DIR"
 printf '%s\n' "$ROOT_DIR" > "$INSTALL_DIR/project-root"
+printf '%s\n' "$NATIVE_NODE_BIN" > "$INSTALL_DIR/node-bin"
 
 cat > "$LAUNCHER" <<'EOF'
 #!/usr/bin/env bash
@@ -42,10 +45,16 @@ set -euo pipefail
 
 INSTALL_DIR="$(cd "$(dirname "$0")" && pwd)"
 ROOT="$(cat "$INSTALL_DIR/project-root")"
+NODE_BIN="$(cat "$INSTALL_DIR/node-bin")"
 ENV_FILE="$ROOT/native/.env"
 HOST="$ROOT/native/host.js"
 
 export DATABASE_PATH="$ROOT/native/data/hawk-sender.db"
+
+if [[ ! -x "$NODE_BIN" ]]; then
+  echo "Configured Node.js binary is not executable: $NODE_BIN — rerun npm run native:install" >&2
+  exit 1
+fi
 
 if [[ ! -f "$ENV_FILE" ]]; then
   echo "Missing $ENV_FILE — copy native/.env.example and fill SMTP" >&2
@@ -57,7 +66,7 @@ if [[ ! -f "$HOST" ]]; then
   exit 1
 fi
 
-exec node --env-file="$ENV_FILE" "$HOST"
+exec "$NODE_BIN" --env-file="$ENV_FILE" "$HOST"
 EOF
 
 chmod +x "$LAUNCHER"
@@ -82,5 +91,6 @@ write_manifest "$HOME/Library/Application Support/zen/NativeMessagingHosts" 2>/d
 write_manifest "$HOME/Library/Application Support/Zen/NativeMessagingHosts" 2>/dev/null || true
 
 echo "Launcher: $LAUNCHER"
+echo "Node: $NATIVE_NODE_BIN"
 echo "SMTP config: $ROOT_DIR/native/.env"
 echo "Native helper ready. Reload the extension in about:debugging."

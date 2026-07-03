@@ -13,7 +13,9 @@ describe('buildLetterContent', () => {
     expect(letter.template).toBe('sentry_migration')
     expect(letter.subject).toContain('Sentry')
     expect(letter.body).toContain('example.com')
-    expect(letter.body).toContain('миграц')
+    expect(letter.body).toContain('dsn')
+    expect(letter.body).toContain('заменить одну строку')
+    expect(letter.body).toContain('серверами в РФ')
   })
 
   it('should build standard offer template when sentry is absent', () => {
@@ -26,6 +28,8 @@ describe('buildLetterContent', () => {
     // Assert
     expect(letter.template).toBe('standard_offer')
     expect(letter.subject).toContain('example.com')
-    expect(letter.body).not.toContain('Sentry')
+    expect(letter.body).toContain('мониторинг ошибок')
+    expect(letter.body).toContain('dsn')
+    expect(letter.body).toContain('открытый исходный код')
   })
 })

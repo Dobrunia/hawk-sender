@@ -19,7 +19,12 @@ export const sendDomainLetter: WorkflowStep = async ({ tabId, tabUrl }) => {
   if (result.reason === 'no_delivery') {
     return {
       type: 'stop',
-      outcome: getWorkflowOutcome('EMAIL_NO_DELIVERY'),
+      outcome: {
+        ...getWorkflowOutcome('EMAIL_NO_DELIVERY'),
+        message: result.error
+          ? `Ошибка SMTP: ${result.error}`
+          : getWorkflowOutcome('EMAIL_NO_DELIVERY').message,
+      },
     }
   }
 

@@ -63,10 +63,13 @@ export async function sendDomainLetterForTab(
     })
 
     if (!hasSuccessfulSend(record)) {
+      const smtpError = getSmtpError(record.sentTo)
+
       return {
         status: 'failed',
         domain,
         reason: 'no_delivery',
+        ...(smtpError ? { error: smtpError } : {}),
       }
     }
 
@@ -97,8 +100,8 @@ export function formatManualSendResult(result: SendDomainLetterResult): {
 
     return {
       message: recipients
-        ? `Письмо отправлено: ${recipients}`
-        : 'Письмо отправлено',
+        ? `SMTP принял письмо: ${recipients}`
+        : 'SMTP принял письмо к отправке',
       color: 2,
     }
   }
@@ -112,8 +115,10 @@ export function formatManualSendResult(result: SendDomainLetterResult): {
 
   if (result.reason === 'no_delivery') {
     return {
-      message: 'Ни на один адрес не доставлено',
-      color: 3,
+      message: result.error
+        ? `Ошибка SMTP: ${result.error}`
+        : 'Ошибка отправки: SMTP не принял письмо ни на один адрес',
+      color: 1,
     }
   }
 
@@ -123,4 +128,12 @@ export function formatManualSendResult(result: SendDomainLetterResult): {
       : 'Ошибка helper',
     color: 1,
   }
+}
+
+function getSmtpError(sentTo: SentToEntry[]): string | undefined {
+  const errors = sentTo
+    .filter((entry) => !entry.status && entry.error)
+    .map((entry) => `${entry.to}: ${entry.error}`)
+
+  return errors.length > 0 ? errors.join('; ') : undefined
 }

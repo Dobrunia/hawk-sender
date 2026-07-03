@@ -3,7 +3,7 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { getDomainRecord, saveSendResult } from './lib/db.js'
 import { dedupeAddresses } from './lib/mergeSentTo.js'
-import { isSmtpConfigured, sendEmails } from './lib/smtp.js'
+import { formatSmtpError, isSmtpConfigured, sendEmails } from './lib/smtp.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const ROOT_DIR = path.resolve(__dirname, '..')
@@ -117,10 +117,12 @@ async function handleSend(message) {
       subject: content.subject,
       body: content.body,
     })
+    const smtpError = formatSmtpError(sentTo)
 
     return {
       ok: true,
       data: saveSendResult(name, sentTo),
+      ...(smtpError ? { error: smtpError } : {}),
     }
   } catch (error) {
     return {

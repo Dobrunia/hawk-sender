@@ -37,7 +37,7 @@ describe('sendDomainLetterForTab', () => {
     vi.mocked(readSentryInstalled).mockResolvedValue(false)
   })
 
-  it('should return success with sent recipients when delivery succeeds', async () => {
+  it('should return success with recipients accepted by SMTP', async () => {
     // Arrange
     const record = {
       name: 'example.com',
@@ -63,7 +63,7 @@ describe('sendDomainLetterForTab', () => {
     })
   })
 
-  it('should return failed when server reports no successful delivery', async () => {
+  it('should return failed when SMTP accepts no recipients', async () => {
     // Arrange
     vi.mocked(readSentryInstalled).mockResolvedValue(true)
     vi.mocked(sendLetter).mockResolvedValue({
@@ -84,6 +84,36 @@ describe('sendDomainLetterForTab', () => {
       status: 'failed',
       domain: 'example.com',
       reason: 'no_delivery',
+    })
+  })
+
+  it('should include SMTP errors when every SMTP attempt fails', async () => {
+    // Arrange
+    vi.mocked(sendLetter).mockResolvedValue({
+      name: 'example.com',
+      sentTo: [
+        {
+          to: 'team@example.com',
+          status: false,
+          error: 'Invalid login',
+        },
+      ],
+      updatedAt: '2026-07-03T12:00:00.000Z',
+    })
+    vi.mocked(hasSuccessfulSend).mockReturnValue(false)
+
+    // Act
+    const result = await sendDomainLetterForTab({
+      tabId: 1,
+      tabUrl: 'https://example.com',
+    })
+
+    // Assert
+    expect(result).toEqual({
+      status: 'failed',
+      domain: 'example.com',
+      reason: 'no_delivery',
+      error: 'team@example.com: Invalid login',
     })
   })
 
@@ -137,12 +167,12 @@ describe('formatManualSendResult', () => {
 
     // Assert
     expect(formatted.message).toBe(
-      'Письмо отправлено: team@example.com, contact@example.com',
+      'SMTP принял письмо: team@example.com, contact@example.com',
     )
     expect(formatted.color).toBe(2)
   })
 
-  it('should format no delivery as neutral message', () => {
+  it('should format no delivery as send error', () => {
     // Act
     const formatted = formatManualSendResult({
       status: 'failed',
@@ -151,8 +181,26 @@ describe('formatManualSendResult', () => {
     })
 
     // Assert
-    expect(formatted.message).toBe('Ни на один адрес не доставлено')
-    expect(formatted.color).toBe(3)
+    expect(formatted.message).toBe(
+      'Ошибка отправки: SMTP не принял письмо ни на один адрес',
+    )
+    expect(formatted.color).toBe(1)
+  })
+
+  it('should format no delivery with SMTP error', () => {
+    // Act
+    const formatted = formatManualSendResult({
+      status: 'failed',
+      domain: 'example.com',
+      reason: 'no_delivery',
+      error: 'team@example.com: Invalid login',
+    })
+
+    // Assert
+    expect(formatted.message).toBe(
+      'Ошибка SMTP: team@example.com: Invalid login',
+    )
+    expect(formatted.color).toBe(1)
   })
 
   it('should format helper error message', () => {

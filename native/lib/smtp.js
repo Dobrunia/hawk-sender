@@ -5,6 +5,7 @@ function getSmtpConfig() {
   const user = process.env.SMTP_USER?.trim()
   const pass = process.env.SMTP_PASS?.trim()
   const from = process.env.SMTP_FROM?.trim()
+  const port = Number(process.env.SMTP_PORT ?? 587)
 
   if (!host || !user || !pass || !from) {
     return null
@@ -12,11 +13,24 @@ function getSmtpConfig() {
 
   return {
     host,
-    port: Number(process.env.SMTP_PORT ?? 587),
-    secure: process.env.SMTP_SECURE === 'true',
+    port,
+    secure: process.env.SMTP_SECURE
+      ? process.env.SMTP_SECURE === 'true'
+      : port === 465,
     auth: { user, pass },
     from,
   }
+}
+
+function getErrorMessage(error) {
+  return error instanceof Error ? error.message : String(error)
+}
+
+export function formatSmtpError(results) {
+  return results
+    .filter((entry) => !entry.status && entry.error)
+    .map((entry) => `${entry.to}: ${entry.error}`)
+    .join('; ')
 }
 
 export function isSmtpConfigured() {
@@ -27,7 +41,6 @@ export async function sendEmails({
   addresses,
   subject,
   body,
-  stopOnFirstSuccess = true,
 }) {
   const config = getSmtpConfig()
 
@@ -56,14 +69,13 @@ export async function sendEmails({
         subject,
         text: body,
       })
+      // SMTP acceptance is not final delivery; recipient MTAs can still
+      // reject later and send a bounce message to the sender mailbox.
       results.push({ to, status: true })
-
-      if (stopOnFirstSuccess) {
-        break
-      }
     } catch (error) {
-      console.error(`[smtp] failed to send to ${to}:`, error.message)
-      results.push({ to, status: false })
+      const message = getErrorMessage(error)
+      console.error(`[smtp] failed to send to ${to}:`, message)
+      results.push({ to, status: false, error: message })
     }
   }
 

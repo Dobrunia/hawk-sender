@@ -4,7 +4,6 @@ import {
   hasSuccessfulSend,
   sendLetter,
 } from '@/shared/api/domainApi'
-import { getApiPassword } from '@/shared/api/config'
 import { extractDomainFromUrl } from '@/shared/domain/extractDomain'
 import { readSentryInstalled } from '@/shared/integrations/readPageIntegrations'
 import { buildLetterContent } from '@/shared/letters/buildLetter'
@@ -60,7 +59,6 @@ export async function sendDomainLetterForTab(
         subject: letter.subject,
         body: letter.body,
       },
-      password: getApiPassword(),
     })
 
     if (!hasSuccessfulSend(record)) {

@@ -40,6 +40,20 @@ vi.mock('@/popup/composables/useManualSend', () => ({
   })),
 }))
 
+vi.mock('@/popup/composables/useServerControl', () => ({
+  useServerControl: vi.fn(() => ({
+    loading: ref(false),
+    actionLoading: ref(false),
+    online: ref(true),
+    smtpConfigured: ref(true),
+    nativeAvailable: ref(true),
+    message: ref(''),
+    start: vi.fn(),
+    stop: vi.fn(),
+    refreshStatus: vi.fn(),
+  })),
+}))
+
 describe('App', () => {
   it('should render title without workflow label when workflow has no outcome', () => {
     // Arrange
@@ -135,5 +149,14 @@ describe('App', () => {
 
     // Assert
     expect(wrapper.text()).toContain('Отправить вручную')
+  })
+
+  it('should render server control section', () => {
+    // Arrange
+    const wrapper = mount(App)
+
+    // Assert
+    expect(wrapper.text()).toContain('Server')
+    expect(wrapper.text()).toContain('Остановить')
   })
 })

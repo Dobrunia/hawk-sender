@@ -4,10 +4,12 @@ import EnableToggle from './components/EnableToggle.vue'
 import HawkIcon from './components/HawkIcon.vue'
 import IntegrationIndicator from './components/IntegrationIndicator.vue'
 import ManualSendButton from './components/ManualSendButton.vue'
+import ServerControl from './components/ServerControl.vue'
 import { useAutomaticWorkflowOutcome } from './composables/useAutomaticWorkflowOutcome'
 import { useExtensionSettings } from './composables/useExtensionSettings'
 import { useManualSend } from './composables/useManualSend'
 import { usePageIntegrations } from './composables/usePageIntegrations'
+import { useServerControl } from './composables/useServerControl'
 import {
   getOutcomeColorValue,
   resolvePopupOutcome,
@@ -25,6 +27,15 @@ const {
   display: manualSendDisplay,
   send: sendManually,
 } = useManualSend()
+const {
+  loading: serverLoading,
+  actionLoading: serverActionLoading,
+  online: serverOnline,
+  nativeAvailable,
+  message: serverMessage,
+  start: startServer,
+  stop: stopServer,
+} = useServerControl()
 
 const loading = computed(() => settingsLoading.value || workflowLoading.value)
 const workflowDisplay = computed(() => resolvePopupOutcome(outcome.value, loading.value))
@@ -91,6 +102,16 @@ async function handleSetEnabled(value: boolean) {
         :present="integrationsLoading ? null : sentry"
       />
     </section>
+
+    <ServerControl
+      :loading="serverLoading"
+      :action-loading="serverActionLoading"
+      :online="serverOnline"
+      :native-available="nativeAvailable"
+      :message="serverMessage"
+      @start="startServer"
+      @stop="stopServer"
+    />
   </main>
 </template>
 

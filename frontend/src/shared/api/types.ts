@@ -7,7 +7,6 @@ export interface SendLetterPayload {
   name: string
   address: string[]
   content: SendLetterContent
-  password: string
 }
 
 export interface SentToEntry {

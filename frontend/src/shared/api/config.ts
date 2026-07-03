@@ -7,13 +7,3 @@ export function getApiBaseUrl(): string {
 
   return value
 }
-
-export function getApiPassword(): string {
-  const value = import.meta.env.VITE_API_PASSWORD?.trim()
-
-  if (!value) {
-    throw new Error('VITE_API_PASSWORD is not configured')
-  }
-
-  return value
-}

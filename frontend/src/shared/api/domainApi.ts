@@ -1,4 +1,4 @@
-import { getApiBaseUrl, getApiPassword } from '@/shared/api/config'
+import { getApiBaseUrl } from '@/shared/api/config'
 import type {
   DomainCheckRecord,
   DomainCheckResponse,
@@ -34,10 +34,7 @@ export async function sendLetter(
     headers: {
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify({
-      ...payload,
-      password: payload.password || getApiPassword(),
-    }),
+    body: JSON.stringify(payload),
   })
 
   if (!response.ok) {

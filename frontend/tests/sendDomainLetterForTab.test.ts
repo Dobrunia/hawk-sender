@@ -18,10 +18,6 @@ vi.mock('@/shared/api/domainApi', () => ({
   getSuccessfulRecipients: vi.fn(),
 }))
 
-vi.mock('@/shared/api/config', () => ({
-  getApiPassword: vi.fn(() => 'test-password'),
-}))
-
 import { getSuccessfulRecipients, hasSuccessfulSend, sendLetter } from '@/shared/api/domainApi'
 import { readSentryInstalled } from '@/shared/integrations/readPageIntegrations'
 import { resolveDomainSendAddresses } from '@/shared/recipients/resolveDomainSendAddresses'

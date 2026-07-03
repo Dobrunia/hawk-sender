@@ -10,7 +10,6 @@ import {
 } from '@/shared/workflow/outcomes'
 
 vi.mock('@/shared/api/config', () => ({
-  getApiPassword: vi.fn(() => 'test-password'),
   getApiBaseUrl: vi.fn(() => 'https://api.example.com'),
 }))
 

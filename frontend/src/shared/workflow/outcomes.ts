@@ -35,6 +35,12 @@ export const WORKFLOW_OUTCOMES = {
     color: 3,
     terminal: true,
   },
+  PAGE_ACCESS_UNAVAILABLE: {
+    code: 'PAGE_ACCESS_UNAVAILABLE',
+    message: 'Нет доступа к проверке страницы',
+    color: 3,
+    terminal: true,
+  },
   EMAIL_ALREADY_SENT_WITHIN_HALF_YEAR: {
     code: 'EMAIL_ALREADY_SENT_WITHIN_HALF_YEAR',
     message: 'SMTP уже принимал письмо за последние полгода',

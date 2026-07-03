@@ -28,7 +28,7 @@ describe('buildLetterContent', () => {
     // Assert
     expect(letter.template).toBe('standard_offer')
     expect(letter.subject).toContain('example.com')
-    expect(letter.body).toContain('мониторинг ошибок')
+    expect(letter.body).toContain('трекер ошибок')
     expect(letter.body).toContain('dsn')
     expect(letter.body).toContain('открытый исходный код')
   })

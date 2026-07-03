@@ -27,5 +27,6 @@
     "scripts": ["background.ts"],
     "type": "module"
   },
-  "permissions": ["storage", "tabs", "scripting", "activeTab", "nativeMessaging"]
+  "permissions": ["storage", "tabs", "scripting", "activeTab", "nativeMessaging"],
+  "host_permissions": ["http://*/*", "https://*/*"]
 }

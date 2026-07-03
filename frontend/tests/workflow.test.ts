@@ -248,6 +248,23 @@ describe('runAutomaticWorkflow', () => {
     expect(sendLetter).not.toHaveBeenCalled()
   })
 
+  it('should stop before sending when page integration check is unavailable', async () => {
+    // Arrange
+    vi.mocked(isExtensionEnabled).mockResolvedValue(true)
+    vi.mocked(getTabIntegrations).mockResolvedValue({
+      hawk: false,
+      sentry: false,
+      available: false,
+    })
+
+    // Act
+    const result = await runAutomaticWorkflow(workflowContext)
+
+    // Assert
+    expect(result.outcome).toEqual(WORKFLOW_OUTCOMES.PAGE_ACCESS_UNAVAILABLE)
+    expect(sendLetter).not.toHaveBeenCalled()
+  })
+
   it('should return HAWK_INSTALLED when Hawk is detected on page', async () => {
     // Arrange
     vi.mocked(isExtensionEnabled).mockResolvedValue(true)
@@ -331,6 +348,18 @@ describe('resolvePopupOutcome', () => {
 
     // Assert
     expect(display.message).toBe('Домен не в зоне .ru')
+    expect(display.color).toBe(3)
+  })
+
+  it('should show PAGE_ACCESS_UNAVAILABLE message and neutral color from outcome', () => {
+    // Arrange
+    const outcome = WORKFLOW_OUTCOMES.PAGE_ACCESS_UNAVAILABLE
+
+    // Act
+    const display = resolvePopupOutcome(outcome, false)
+
+    // Assert
+    expect(display.message).toBe('Нет доступа к проверке страницы')
     expect(display.color).toBe(3)
   })
 

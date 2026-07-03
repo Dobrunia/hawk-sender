@@ -6,7 +6,6 @@ import IntegrationIndicator from './components/IntegrationIndicator.vue'
 import ManualSendButton from './components/ManualSendButton.vue'
 import { useAutomaticWorkflowOutcome } from './composables/useAutomaticWorkflowOutcome'
 import { useExtensionSettings } from './composables/useExtensionSettings'
-import { useManualSend } from './composables/useManualSend'
 import { usePageIntegrations } from './composables/usePageIntegrations'
 import {
   getOutcomeColorValue,
@@ -14,37 +13,52 @@ import {
 } from '@/shared/workflow/outcomes'
 
 const { enabled, loading: settingsLoading, setEnabled } = useExtensionSettings()
-const { outcome, loading: workflowLoading, refresh: refreshWorkflow } = useAutomaticWorkflowOutcome(
-  enabled,
-  settingsLoading,
-)
+const {
+  outcome,
+  progress,
+  loading: workflowLoading,
+  rerunForActiveTab,
+} = useAutomaticWorkflowOutcome(enabled, settingsLoading)
 const {
   hawk,
   sentry,
   loading: integrationsLoading,
 } = usePageIntegrations()
-const {
-  loading: manualSendLoading,
-  display: manualSendDisplay,
-  send: sendManually,
-} = useManualSend()
-
 const loading = computed(() => settingsLoading.value || workflowLoading.value)
 const workflowDisplay = computed(() => resolvePopupOutcome(outcome.value, loading.value))
+const workflowMessage = computed(() => {
+  if (progress.value?.status === 'running') {
+    return progress.value.message
+  }
+
+  return workflowDisplay.value.message
+})
 const workflowColor = computed(() =>
-  workflowDisplay.value.color
+  progress.value?.status === 'running'
+    ? '#2563eb'
+    : workflowDisplay.value.color
     ? getOutcomeColorValue(workflowDisplay.value.color)
     : '#64748b',
 )
-const manualSendColor = computed(() =>
-  manualSendDisplay.value
-    ? getOutcomeColorValue(manualSendDisplay.value.color)
-    : '#64748b',
-)
+const workflowStepLabel = computed(() => {
+  if (
+    progress.value?.status !== 'running'
+    || progress.value.stepIndex === undefined
+    || progress.value.stepTotal === undefined
+  ) {
+    return ''
+  }
+
+  return `Шаг ${progress.value.stepIndex + 1} из ${progress.value.stepTotal}`
+})
 
 async function handleSetEnabled(value: boolean) {
   await setEnabled(value)
-  await refreshWorkflow()
+  await rerunForActiveTab(value)
+}
+
+async function sendManually() {
+  await rerunForActiveTab(true)
 }
 </script>
 
@@ -56,11 +70,17 @@ async function handleSetEnabled(value: boolean) {
         <HawkIcon class="popup__title-icon" />
       </h1>
       <p
-        v-if="enabled && workflowDisplay.message"
+        v-if="workflowMessage"
         class="popup__workflow"
         :style="{ color: workflowColor }"
       >
-        {{ workflowDisplay.message }}
+        {{ workflowMessage }}
+        <span
+          v-if="workflowStepLabel"
+          class="popup__workflow-step"
+        >
+          {{ workflowStepLabel }}
+        </span>
       </p>
     </header>
 
@@ -71,18 +91,10 @@ async function handleSetEnabled(value: boolean) {
     />
 
     <ManualSendButton
-      :loading="manualSendLoading"
+      :loading="workflowLoading"
       :disabled="settingsLoading"
       @send="sendManually"
     />
-
-    <p
-      v-if="manualSendDisplay?.message"
-      class="popup__manual-send"
-      :style="{ color: manualSendColor }"
-    >
-      {{ manualSendDisplay.message }}
-    </p>
 
     <section class="popup__integrations" aria-label="На текущей странице">
       <IntegrationIndicator
@@ -127,12 +139,13 @@ async function handleSetEnabled(value: boolean) {
 .popup__workflow {
   margin: 4px 0 0;
   font-size: 0.75rem;
+  line-height: 1.125rem;
 }
 
-.popup__manual-send {
-  margin: 8px 0 0;
-  font-size: 0.75rem;
-  line-height: 1.125rem;
+.popup__workflow-step {
+  display: block;
+  margin-top: 2px;
+  color: #64748b;
 }
 
 .popup__integrations {

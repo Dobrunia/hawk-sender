@@ -50,4 +50,16 @@ describe('getActiveTabIntegrations', () => {
     )
     expect(result).toEqual({ hawk: true, sentry: false, available: true })
   })
+
+  it('should return unavailable integrations when script injection is denied', async () => {
+    // Arrange
+    query.mockResolvedValue([{ id: 42, url: 'https://example.com' }])
+    executeScript.mockRejectedValue(new Error('Missing host permission for the tab'))
+
+    // Act
+    const result = await getActiveTabIntegrations()
+
+    // Assert
+    expect(result).toEqual({ hawk: false, sentry: false, available: false })
+  })
 })

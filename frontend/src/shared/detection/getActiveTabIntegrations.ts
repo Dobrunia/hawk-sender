@@ -9,11 +9,17 @@ const UNAVAILABLE: TabPageIntegrations = {
 }
 
 export async function getTabIntegrations(tabId: number): Promise<TabPageIntegrations> {
-  const [result] = await browser.scripting.executeScript({
-    target: { tabId },
-    world: 'MAIN',
-    func: probeIntegrationsInPage,
-  })
+  let result: browser.Scripting.InjectionResult | undefined
+
+  try {
+    [result] = await browser.scripting.executeScript({
+      target: { tabId },
+      world: 'MAIN',
+      func: probeIntegrationsInPage,
+    })
+  } catch {
+    return UNAVAILABLE
+  }
 
   if (!result?.result) {
     return UNAVAILABLE

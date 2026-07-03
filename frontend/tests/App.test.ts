@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { ref } from 'vue'
 import { mount } from '@vue/test-utils'
 import App from '@/popup/App.vue'
@@ -17,8 +17,10 @@ vi.mock('@/popup/composables/useExtensionSettings', () => ({
 vi.mock('@/popup/composables/useAutomaticWorkflowOutcome', () => ({
   useAutomaticWorkflowOutcome: vi.fn(() => ({
     outcome: ref(null),
+    progress: ref(null),
     loading: ref(false),
     refresh: vi.fn(),
+    rerunForActiveTab: vi.fn(),
   })),
 }))
 
@@ -31,16 +33,22 @@ vi.mock('@/popup/composables/usePageIntegrations', () => ({
   }),
 }))
 
-vi.mock('@/popup/composables/useManualSend', () => ({
-  useManualSend: vi.fn(() => ({
-    loading: ref(false),
-    result: ref(null),
-    display: ref(null),
-    send: vi.fn(),
-  })),
-}))
-
 describe('App', () => {
+  beforeEach(() => {
+    vi.mocked(useExtensionSettings).mockReturnValue({
+      enabled: ref(true),
+      loading: ref(false),
+      setEnabled: vi.fn(),
+    })
+    vi.mocked(useAutomaticWorkflowOutcome).mockReturnValue({
+      outcome: ref(null),
+      progress: ref(null),
+      loading: ref(false),
+      refresh: vi.fn(),
+      rerunForActiveTab: vi.fn(),
+    })
+  })
+
   it('should render title without workflow label when workflow has no outcome', () => {
     // Arrange
     const wrapper = mount(App)
@@ -54,9 +62,9 @@ describe('App', () => {
     expect(text).toContain('Автосбор и отправка')
   })
 
-  it('should refresh workflow after toggle change', async () => {
+  it('should rerun workflow after toggle change', async () => {
     // Arrange
-    const refresh = vi.fn()
+    const rerunForActiveTab = vi.fn().mockResolvedValue(undefined)
     const setEnabled = vi.fn().mockResolvedValue(undefined)
     vi.mocked(useExtensionSettings).mockReturnValue({
       enabled: ref(true),
@@ -65,8 +73,10 @@ describe('App', () => {
     })
     vi.mocked(useAutomaticWorkflowOutcome).mockReturnValue({
       outcome: ref(null),
+      progress: ref(null),
       loading: ref(false),
-      refresh,
+      refresh: vi.fn(),
+      rerunForActiveTab,
     })
     const wrapper = mount(App)
 
@@ -75,15 +85,43 @@ describe('App', () => {
 
     // Assert
     expect(setEnabled).toHaveBeenCalledWith(false)
-    expect(refresh).toHaveBeenCalled()
+    expect(rerunForActiveTab).toHaveBeenCalledWith(false)
+  })
+
+  it('should rerun workflow when toggle is enabled', async () => {
+    // Arrange
+    const rerunForActiveTab = vi.fn().mockResolvedValue(undefined)
+    const setEnabled = vi.fn().mockResolvedValue(undefined)
+    vi.mocked(useExtensionSettings).mockReturnValue({
+      enabled: ref(false),
+      loading: ref(false),
+      setEnabled,
+    })
+    vi.mocked(useAutomaticWorkflowOutcome).mockReturnValue({
+      outcome: ref(null),
+      progress: ref(null),
+      loading: ref(false),
+      refresh: vi.fn(),
+      rerunForActiveTab,
+    })
+    const wrapper = mount(App)
+
+    // Act
+    await wrapper.find('[role="switch"]').trigger('click')
+
+    // Assert
+    expect(setEnabled).toHaveBeenCalledWith(true)
+    expect(rerunForActiveTab).toHaveBeenCalledWith(true)
   })
 
   it('should render HAWK_INSTALLED workflow outcome on current page', () => {
     // Arrange
     vi.mocked(useAutomaticWorkflowOutcome).mockReturnValue({
       outcome: ref(WORKFLOW_OUTCOMES.HAWK_INSTALLED),
+      progress: ref(null),
       loading: ref(false),
       refresh: vi.fn(),
+      rerunForActiveTab: vi.fn(),
     })
     const wrapper = mount(App)
 
@@ -102,9 +140,11 @@ describe('App', () => {
       setEnabled: vi.fn(),
     })
     vi.mocked(useAutomaticWorkflowOutcome).mockReturnValue({
-      outcome: ref(WORKFLOW_OUTCOMES.EMAIL_SEND_FAILED),
+      outcome: ref(null),
+      progress: ref(null),
       loading: ref(false),
       refresh: vi.fn(),
+      rerunForActiveTab: vi.fn(),
     })
     const wrapper = mount(App)
 
@@ -136,5 +176,46 @@ describe('App', () => {
 
     // Assert
     expect(wrapper.text()).toContain('Отправить вручную')
+  })
+
+  it('should render current workflow progress', () => {
+    // Arrange
+    vi.mocked(useAutomaticWorkflowOutcome).mockReturnValue({
+      outcome: ref(null),
+      progress: ref({
+        status: 'running',
+        message: 'Проверяем историю отправок по домену',
+        stepId: 'check_domain_send_history',
+        stepIndex: 4,
+        stepTotal: 6,
+      }),
+      loading: ref(true),
+      refresh: vi.fn(),
+      rerunForActiveTab: vi.fn(),
+    })
+    const wrapper = mount(App)
+
+    // Assert
+    expect(wrapper.text()).toContain('Проверяем историю отправок по домену')
+    expect(wrapper.text()).toContain('Шаг 5 из 6')
+  })
+
+  it('should rerun workflow when manual send button is clicked', async () => {
+    // Arrange
+    const rerunForActiveTab = vi.fn().mockResolvedValue(undefined)
+    vi.mocked(useAutomaticWorkflowOutcome).mockReturnValue({
+      outcome: ref(null),
+      progress: ref(null),
+      loading: ref(false),
+      refresh: vi.fn(),
+      rerunForActiveTab,
+    })
+    const wrapper = mount(App)
+
+    // Act
+    await wrapper.find('.manual-send').trigger('click')
+
+    // Assert
+    expect(rerunForActiveTab).toHaveBeenCalledWith(true)
   })
 })

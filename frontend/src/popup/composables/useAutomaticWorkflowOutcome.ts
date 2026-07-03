@@ -2,9 +2,11 @@ import { onMounted, onUnmounted, ref, watch, type Ref } from 'vue'
 import browser from 'webextension-polyfill'
 import { refreshPageIntegrationsOnly } from '@/shared/detection/syncPageIntegrations'
 import {
-  getTabWorkflowOutcome,
+  getTabWorkflowRecord,
   onWorkflowOutcomeChanged,
+  type TabWorkflowProgress,
 } from '@/shared/storage/workflowOutcomeStorage'
+import { requestAutomaticWorkflowRun } from '@/shared/workflow/automaticWorkflowMessage'
 import type { WorkflowOutcome } from '@/shared/workflow/outcomes'
 
 export function useAutomaticWorkflowOutcome(
@@ -12,6 +14,7 @@ export function useAutomaticWorkflowOutcome(
   settingsLoading: Ref<boolean>,
 ) {
   const outcome = ref<WorkflowOutcome | null>(null)
+  const progress = ref<TabWorkflowProgress | null>(null)
   const loading = ref(true)
   let activeTabId: number | null = null
   let unsubscribe: (() => void) | null = null
@@ -29,6 +32,7 @@ export function useAutomaticWorkflowOutcome(
       if (!tab?.id || !tab.url?.startsWith('http')) {
         activeTabId = null
         outcome.value = null
+        progress.value = null
         return
       }
 
@@ -40,10 +44,41 @@ export function useAutomaticWorkflowOutcome(
           tabUrl: tab.url,
         })
         outcome.value = null
+        progress.value = null
         return
       }
 
-      outcome.value = await getTabWorkflowOutcome(tab.id)
+      const record = await getTabWorkflowRecord(tab.id)
+      outcome.value = record?.outcome ?? null
+      progress.value = record?.progress ?? null
+    } finally {
+      loading.value = false
+    }
+  }
+
+  async function rerunForActiveTab(nextEnabled = enabled.value) {
+    loading.value = true
+
+    try {
+      const [tab] = await browser.tabs.query({ active: true, currentWindow: true })
+
+      if (!tab?.id || !tab.url?.startsWith('http')) {
+        activeTabId = null
+        outcome.value = null
+        progress.value = null
+        return
+      }
+
+      activeTabId = tab.id
+      progress.value = {
+        status: 'running',
+        message: 'Запускаем workflow',
+      }
+      outcome.value = await requestAutomaticWorkflowRun({
+        tabId: tab.id,
+        tabUrl: tab.url,
+        enabled: nextEnabled,
+      })
     } finally {
       loading.value = false
     }
@@ -58,6 +93,7 @@ export function useAutomaticWorkflowOutcome(
       }
 
       outcome.value = record?.outcome ?? null
+      progress.value = record?.progress ?? null
       loading.value = false
     })
   })
@@ -70,7 +106,9 @@ export function useAutomaticWorkflowOutcome(
 
   return {
     outcome,
+    progress,
     loading,
     refresh,
+    rerunForActiveTab,
   }
 }

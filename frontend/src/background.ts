@@ -4,16 +4,80 @@ import {
   handleNativeHostRequest,
   isNativeHostRequest,
 } from '@/shared/native/nativeClient'
-import { sendDomainLetterForTab } from '@/shared/send/sendDomainLetterForTab'
-import { isManualSendRequest } from '@/shared/send/manualSendMessage'
 import { ensureDefaultSettings, isExtensionEnabled } from '@/shared/storage/settingsStorage'
-import { setTabWorkflowOutcome } from '@/shared/storage/workflowOutcomeStorage'
+import {
+  setTabWorkflowOutcome,
+  setTabWorkflowProgress,
+} from '@/shared/storage/workflowOutcomeStorage'
 import { runAutomaticWorkflow } from '@/shared/workflow/automaticWorkflow'
+import {
+  isRunAutomaticWorkflowRequest,
+  type RunAutomaticWorkflowRequest,
+} from '@/shared/workflow/automaticWorkflowMessage'
 import { getWorkflowOutcome } from '@/shared/workflow/outcomes'
 
 browser.runtime.onInstalled.addListener(async () => {
   await ensureDefaultSettings()
 })
+
+async function runAutomaticWorkflowForTab({
+  tabId,
+  tabUrl,
+  enabled,
+}: Omit<RunAutomaticWorkflowRequest, 'type'>) {
+  if (!tabUrl.startsWith('http')) {
+    await setTabWorkflowOutcome(tabId, tabUrl, null)
+    return null
+  }
+
+  const workflowEnabled = enabled ?? await isExtensionEnabled()
+
+  if (!workflowEnabled) {
+    await setTabWorkflowProgress(tabId, tabUrl, {
+      status: 'running',
+      message: 'Обновляем данные страницы',
+    })
+    await refreshPageIntegrationsOnly({
+      tabId,
+      tabUrl,
+    })
+    await setTabWorkflowOutcome(tabId, tabUrl, null)
+    return null
+  }
+
+  try {
+    await setTabWorkflowProgress(tabId, tabUrl, {
+      status: 'running',
+      message: 'Запускаем automatic workflow',
+    })
+
+    const { outcome } = await runAutomaticWorkflow({
+      tabId,
+      tabUrl,
+      enabled: workflowEnabled,
+    }, {
+      onStepStart: (progress) => setTabWorkflowProgress(tabId, tabUrl, {
+        status: 'running',
+        message: progress.message,
+        stepId: progress.id,
+        stepIndex: progress.index,
+        stepTotal: progress.total,
+      }),
+    })
+
+    await setTabWorkflowOutcome(tabId, tabUrl, outcome)
+    return outcome
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error)
+    const outcome = {
+      ...getWorkflowOutcome('EMAIL_HELPER_ERROR'),
+      message: `Ошибка helper: ${message}`,
+    }
+
+    await setTabWorkflowOutcome(tabId, tabUrl, outcome)
+    return outcome
+  }
+}
 
 browser.runtime.onMessage.addListener((message: unknown) => {
   if (isNativeHostRequest(message)) {
@@ -21,11 +85,15 @@ browser.runtime.onMessage.addListener((message: unknown) => {
     return handleNativeHostRequest(request)
   }
 
-  if (isManualSendRequest(message)) {
-    return sendDomainLetterForTab({
-      tabId: message.tabId,
-      tabUrl: message.tabUrl,
-    }).then((result) => ({ ok: true, result }))
+  if (isRunAutomaticWorkflowRequest(message)) {
+    const { type: _type, ...context } = message
+
+    return runAutomaticWorkflowForTab(context)
+      .then((outcome) => ({ ok: true, outcome }))
+      .catch((error) => ({
+        ok: false,
+        error: error instanceof Error ? error.message : String(error),
+      }))
   }
 
   return undefined
@@ -36,32 +104,10 @@ browser.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
     return
   }
 
-  const enabled = await isExtensionEnabled()
-
-  if (!enabled) {
-    await refreshPageIntegrationsOnly({
-      tabId,
-      tabUrl: tab.url,
-    })
-    await setTabWorkflowOutcome(tabId, tab.url, null)
-    return
-  }
-
-  try {
-    const { outcome } = await runAutomaticWorkflow({
-      tabId,
-      tabUrl: tab.url,
-      enabled,
-    })
-
-    await setTabWorkflowOutcome(tabId, tab.url, outcome)
-  } catch (error) {
-    const message = error instanceof Error ? error.message : String(error)
-    await setTabWorkflowOutcome(tabId, tab.url, {
-      ...getWorkflowOutcome('EMAIL_HELPER_ERROR'),
-      message: `Ошибка helper: ${message}`,
-    })
-  }
+  await runAutomaticWorkflowForTab({
+    tabId,
+    tabUrl: tab.url,
+  })
 })
 
 export { runAutomaticWorkflow }

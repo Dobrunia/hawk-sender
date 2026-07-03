@@ -24,6 +24,20 @@ const selectRecord = db.prepare(`
   WHERE name = ?
 `)
 
+const selectAllRecords = db.prepare(`
+  SELECT name, sent_to_json AS sentToJson, updated_at AS updatedAt
+  FROM domain_records
+  ORDER BY updated_at DESC, name ASC
+`)
+
+function mapRecord(row) {
+  return {
+    name: row.name,
+    sentTo: JSON.parse(row.sentToJson),
+    updatedAt: row.updatedAt,
+  }
+}
+
 const upsertRecord = db.prepare(`
   INSERT INTO domain_records (name, sent_to_json, updated_at)
   VALUES (@name, @sentToJson, @updatedAt)
@@ -39,11 +53,11 @@ export function getDomainRecord(name) {
     return null
   }
 
-  return {
-    name: row.name,
-    sentTo: JSON.parse(row.sentToJson),
-    updatedAt: row.updatedAt,
-  }
+  return mapRecord(row)
+}
+
+export function getDomainRecords() {
+  return selectAllRecords.all().map(mapRecord)
 }
 
 const saveSendResultTx = db.transaction((name, sentTo) => {

@@ -24,6 +24,19 @@ vi.mock('@/popup/composables/useAutomaticWorkflowOutcome', () => ({
   })),
 }))
 
+vi.mock('webextension-polyfill', () => ({
+  default: {
+    runtime: {
+      getURL: vi.fn((path: string) => `moz-extension://test/${path}`),
+    },
+    tabs: {
+      create: vi.fn(),
+    },
+  },
+}))
+
+import browser from 'webextension-polyfill'
+
 vi.mock('@/popup/composables/usePageIntegrations', () => ({
   usePageIntegrations: () => ({
     hawk: ref(true),
@@ -166,8 +179,8 @@ describe('App', () => {
     // Assert
     expect(text).toContain('Hawk')
     expect(text).toContain('Sentry')
-    expect(text).toContain('Есть')
-    expect(text).toContain('Нет')
+    expect(text).not.toContain('Есть')
+    expect(text).not.toContain('Нет')
   })
 
   it('should render manual send button', () => {
@@ -176,6 +189,19 @@ describe('App', () => {
 
     // Assert
     expect(wrapper.text()).toContain('Отправить вручную')
+  })
+
+  it('should open database page from popup', async () => {
+    // Arrange
+    const wrapper = mount(App)
+
+    // Act
+    await wrapper.find('.popup__database').trigger('click')
+
+    // Assert
+    expect(browser.tabs.create).toHaveBeenCalledWith({
+      url: 'moz-extension://test/db/index.html',
+    })
   })
 
   it('should render current workflow progress', () => {

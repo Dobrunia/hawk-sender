@@ -31,7 +31,6 @@ const ariaLabel = computed(() => {
       aria-hidden="true"
     />
     <span class="integration-indicator__label">{{ label }}</span>
-    <span class="integration-indicator__status">{{ statusText }}</span>
   </div>
 </template>
 
@@ -70,10 +69,4 @@ const ariaLabel = computed(() => {
   white-space: nowrap;
 }
 
-.integration-indicator__status {
-  color: #64748b;
-  font-size: 0.75rem;
-  line-height: 1;
-  white-space: nowrap;
-}
 </style>

@@ -27,6 +27,10 @@
     "scripts": ["background.ts"],
     "type": "module"
   },
+  "options_ui": {
+    "page": "db/index.html",
+    "open_in_tab": true
+  },
   "permissions": ["storage", "tabs", "scripting", "activeTab", "nativeMessaging"],
   "host_permissions": ["http://*/*", "https://*/*"]
 }

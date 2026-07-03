@@ -17,8 +17,8 @@ describe('IntegrationIndicator', () => {
 
     // Assert
     expect(lamp.classes()).toContain('integration-indicator__lamp--on')
-    expect(wrapper.text()).toContain('Hawk')
-    expect(wrapper.text()).toContain('Есть')
+    expect(wrapper.text()).toBe('Hawk')
+    expect(wrapper.attributes('aria-label')).toBe('Hawk: есть')
   })
 
   it('should render red lamp when integration is absent', () => {
@@ -35,8 +35,8 @@ describe('IntegrationIndicator', () => {
 
     // Assert
     expect(lamp.classes()).toContain('integration-indicator__lamp--off')
-    expect(wrapper.text()).toContain('Sentry')
-    expect(wrapper.text()).toContain('Нет')
+    expect(wrapper.text()).toBe('Sentry')
+    expect(wrapper.attributes('aria-label')).toBe('Sentry: нет')
   })
 
   it('should render loading state', () => {
@@ -54,7 +54,7 @@ describe('IntegrationIndicator', () => {
 
     // Assert
     expect(lamp.classes()).toContain('integration-indicator__lamp--unknown')
-    expect(wrapper.text()).toContain('Проверка')
+    expect(wrapper.text()).toBe('Hawk')
     expect(wrapper.attributes('aria-label')).toBe('Hawk: проверка')
   })
 
@@ -68,7 +68,7 @@ describe('IntegrationIndicator', () => {
     })
 
     // Assert
-    expect(wrapper.text()).toContain('Неизвестно')
+    expect(wrapper.text()).toBe('Hawk')
     expect(wrapper.attributes('aria-label')).toBe('Hawk: неизвестно')
   })
 })

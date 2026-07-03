@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { getDomainRecord, saveSendResult } from './lib/db.js'
+import { getDomainRecord, getDomainRecords, saveSendResult } from './lib/db.js'
 import { dedupeAddresses } from './lib/mergeSentTo.js'
 import { formatSmtpError, isSmtpConfigured, sendEmails } from './lib/smtp.js'
 
@@ -132,6 +132,13 @@ async function handleSend(message) {
   }
 }
 
+async function handleDump() {
+  return {
+    ok: true,
+    data: getDomainRecords(),
+  }
+}
+
 async function handleMessage(message) {
   switch (message.action) {
     case 'ping':
@@ -141,6 +148,8 @@ async function handleMessage(message) {
       }
     case 'check':
       return handleCheck(message.name)
+    case 'dump':
+      return handleDump()
     case 'send':
       return handleSend(message)
     default:

@@ -41,4 +41,16 @@ export async function sendLetter(
   return response.data
 }
 
+export async function dumpDomainRecords(): Promise<DomainCheckRecord[]> {
+  const response = await invokeNativeHost<NativeHostDataResponse<DomainCheckRecord[]>>({
+    action: 'dump',
+  })
+
+  if (!response.ok || !response.data) {
+    throw new Error(response.error ?? 'Dump domain records failed')
+  }
+
+  return response.data
+}
+
 export { getSuccessfulRecipients, hasSuccessfulSend } from '@/shared/api/sendRecord'

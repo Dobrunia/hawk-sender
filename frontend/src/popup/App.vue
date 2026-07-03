@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
+import browser from 'webextension-polyfill'
 import EnableToggle from './components/EnableToggle.vue'
 import HawkIcon from './components/HawkIcon.vue'
 import IntegrationIndicator from './components/IntegrationIndicator.vue'
@@ -60,6 +61,12 @@ async function handleSetEnabled(value: boolean) {
 async function sendManually() {
   await rerunForActiveTab(true, 'manual')
 }
+
+async function openDatabase() {
+  await browser.tabs.create({
+    url: browser.runtime.getURL('db/index.html'),
+  })
+}
 </script>
 
 <template>
@@ -95,6 +102,14 @@ async function sendManually() {
       :disabled="settingsLoading"
       @send="sendManually"
     />
+
+    <button
+      type="button"
+      class="popup__database"
+      @click="openDatabase"
+    >
+      Открыть базу
+    </button>
 
     <section class="popup__integrations" aria-label="На текущей странице">
       <IntegrationIndicator
@@ -157,5 +172,24 @@ async function sendManually() {
   margin-top: 16px;
   padding-top: 16px;
   border-top: 1px solid #e2e8f0;
+}
+
+.popup__database {
+  width: 100%;
+  margin-top: 8px;
+  padding: 9px 14px;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  background: #fff;
+  color: #0f172a;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s ease, border-color 0.2s ease;
+}
+
+.popup__database:hover {
+  border-color: #94a3b8;
+  background: #f8fafc;
 }
 </style>

@@ -2,7 +2,7 @@ import browser from 'webextension-polyfill'
 
 export const NATIVE_HOST_NAME = 'hawk_sender'
 
-export type NativeHostAction = 'ping' | 'check' | 'send'
+export type NativeHostAction = 'ping' | 'check' | 'dump' | 'send'
 
 export interface NativeHostRequest {
   action: NativeHostAction

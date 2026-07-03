@@ -1,10 +1,11 @@
 import { runWorkflowSteps } from '@/shared/workflow/runner'
 import { checkExtensionEnabled } from '@/shared/workflow/steps/checkExtensionEnabled'
+import { checkHawkNotInstalled } from '@/shared/workflow/steps/checkHawkNotInstalled'
 import type { WorkflowContext, WorkflowRunResult } from '@/shared/workflow/types'
 
 const AUTOMATIC_WORKFLOW_STEPS = [
   checkExtensionEnabled,
-  // checkHawkNotConnected,
+  checkHawkNotInstalled,
   // checkDomainNotInList,
   // checkDomainSentRecently,
   // detectSentryAndSendEmail,

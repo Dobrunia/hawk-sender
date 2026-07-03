@@ -8,15 +8,9 @@ const UNAVAILABLE: TabPageIntegrations = {
   available: false,
 }
 
-export async function getActiveTabIntegrations(): Promise<TabPageIntegrations> {
-  const [tab] = await browser.tabs.query({ active: true, currentWindow: true })
-
-  if (!tab?.id || !tab.url?.startsWith('http')) {
-    return UNAVAILABLE
-  }
-
+export async function getTabIntegrations(tabId: number): Promise<TabPageIntegrations> {
   const [result] = await browser.scripting.executeScript({
-    target: { tabId: tab.id },
+    target: { tabId },
     world: 'MAIN',
     func: probeIntegrationsInPage,
   })
@@ -31,4 +25,14 @@ export async function getActiveTabIntegrations(): Promise<TabPageIntegrations> {
     ...integrations,
     available: true,
   }
+}
+
+export async function getActiveTabIntegrations(): Promise<TabPageIntegrations> {
+  const [tab] = await browser.tabs.query({ active: true, currentWindow: true })
+
+  if (!tab?.id || !tab.url?.startsWith('http')) {
+    return UNAVAILABLE
+  }
+
+  return getTabIntegrations(tab.id)
 }

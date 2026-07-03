@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { runAutomaticWorkflow } from '@/shared/workflow/automaticWorkflow'
 import { runWorkflowSteps } from '@/shared/workflow/runner'
 import { checkExtensionEnabled } from '@/shared/workflow/steps/checkExtensionEnabled'
@@ -14,7 +14,12 @@ vi.mock('@/shared/storage/settingsStorage', () => ({
   isExtensionEnabled: vi.fn(),
 }))
 
+vi.mock('@/shared/detection/getActiveTabIntegrations', () => ({
+  getTabIntegrations: vi.fn(),
+}))
+
 import { isExtensionEnabled } from '@/shared/storage/settingsStorage'
+import { getTabIntegrations } from '@/shared/detection/getActiveTabIntegrations'
 
 const workflowContext: WorkflowContext = {
   tabId: 1,
@@ -95,6 +100,14 @@ describe('checkExtensionEnabled', () => {
 })
 
 describe('runAutomaticWorkflow', () => {
+  beforeEach(() => {
+    vi.mocked(getTabIntegrations).mockResolvedValue({
+      hawk: false,
+      sentry: false,
+      available: true,
+    })
+  })
+
   it('should return AUTO_SEND_INACTIVE when extension is disabled', async () => {
     // Arrange
     vi.mocked(isExtensionEnabled).mockResolvedValue(false)
@@ -106,7 +119,7 @@ describe('runAutomaticWorkflow', () => {
     expect(result.outcome).toEqual(WORKFLOW_OUTCOMES.AUTO_SEND_INACTIVE)
   })
 
-  it('should return null outcome when extension is enabled', async () => {
+  it('should return null outcome when extension is enabled and Hawk is not installed', async () => {
     // Arrange
     vi.mocked(isExtensionEnabled).mockResolvedValue(true)
 
@@ -115,6 +128,22 @@ describe('runAutomaticWorkflow', () => {
 
     // Assert
     expect(result.outcome).toBeNull()
+  })
+
+  it('should return HAWK_INSTALLED when Hawk is detected on page', async () => {
+    // Arrange
+    vi.mocked(isExtensionEnabled).mockResolvedValue(true)
+    vi.mocked(getTabIntegrations).mockResolvedValue({
+      hawk: true,
+      sentry: false,
+      available: true,
+    })
+
+    // Act
+    const result = await runAutomaticWorkflow(workflowContext)
+
+    // Assert
+    expect(result.outcome).toEqual(WORKFLOW_OUTCOMES.HAWK_INSTALLED)
   })
 })
 

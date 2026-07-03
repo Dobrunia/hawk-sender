@@ -11,6 +11,11 @@ export const WORKFLOW_OUTCOMES = {
     message: 'Автоматическая отправка неактивна',
     terminal: true,
   },
+  HAWK_INSTALLED: {
+    code: 'HAWK_INSTALLED',
+    message: 'Hawk установлен',
+    terminal: true,
+  },
 } as const satisfies Record<string, WorkflowOutcome>
 
 export type WorkflowOutcomeCode = keyof typeof WORKFLOW_OUTCOMES

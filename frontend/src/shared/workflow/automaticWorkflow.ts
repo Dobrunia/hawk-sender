@@ -1,15 +1,17 @@
 import { runWorkflowSteps } from '@/shared/workflow/runner'
+import { checkDomainSendHistory } from '@/shared/workflow/steps/checkDomainSendHistory'
 import { checkExtensionEnabled } from '@/shared/workflow/steps/checkExtensionEnabled'
-import { checkHawkNotInstalled } from '@/shared/workflow/steps/checkHawkNotInstalled'
+import { sendDomainLetter } from '@/shared/workflow/steps/sendDomainLetter'
+import { stopWorkflowIfHawkInstalled } from '@/shared/workflow/steps/stopWorkflowIfHawkInstalled'
+import { syncPageIntegrationsStep } from '@/shared/workflow/steps/syncPageIntegrationsStep'
 import type { WorkflowContext, WorkflowRunResult } from '@/shared/workflow/types'
 
 const AUTOMATIC_WORKFLOW_STEPS = [
   checkExtensionEnabled,
-  checkHawkNotInstalled,
-  // checkDomainNotInList,
-  // checkDomainSentRecently,
-  // detectSentryAndSendEmail,
-  // recordSentDomain,
+  syncPageIntegrationsStep,
+  stopWorkflowIfHawkInstalled,
+  checkDomainSendHistory,
+  sendDomainLetter,
 ] as const
 
 export async function runAutomaticWorkflow(

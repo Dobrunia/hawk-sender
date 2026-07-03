@@ -1,5 +1,6 @@
 import browser from 'webextension-polyfill'
-import { ensureDefaultSettings } from '@/shared/storage/settingsStorage'
+import { refreshPageIntegrationsOnly } from '@/shared/detection/syncPageIntegrations'
+import { ensureDefaultSettings, isExtensionEnabled } from '@/shared/storage/settingsStorage'
 import { runAutomaticWorkflow } from '@/shared/workflow/automaticWorkflow'
 
 browser.runtime.onInstalled.addListener(async () => {
@@ -11,9 +12,20 @@ browser.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
     return
   }
 
+  const enabled = await isExtensionEnabled()
+
+  if (!enabled) {
+    await refreshPageIntegrationsOnly({
+      tabId,
+      tabUrl: tab.url,
+    })
+    return
+  }
+
   const { outcome } = await runAutomaticWorkflow({
     tabId,
     tabUrl: tab.url,
+    enabled,
   })
 
   if (outcome?.terminal) {

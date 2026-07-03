@@ -50,6 +50,17 @@ export default defineConfig({
       webExtConfig: autoLaunchBrowser && browserBinary
         ? { firefox: browserBinary }
         : undefined,
+      transformManifest(manifest) {
+        const apiBaseUrl = process.env.VITE_API_BASE_URL?.trim()
+
+        if (!apiBaseUrl) {
+          throw new Error('VITE_API_BASE_URL is required for build')
+        }
+
+        manifest.host_permissions = [`${apiBaseUrl.replace(/\/$/, '')}/*`]
+
+        return manifest
+      },
     }),
   ],
   resolve: {

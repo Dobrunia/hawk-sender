@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { runAutomaticWorkflow } from '@/shared/workflow/automaticWorkflow'
 import type { WorkflowContext, WorkflowStep } from '@/shared/workflow/types'
 import { runWorkflowSteps } from '@/shared/workflow/runner'
@@ -9,6 +9,11 @@ import {
   WORKFLOW_OUTCOMES,
 } from '@/shared/workflow/outcomes'
 
+vi.mock('@/shared/api/config', () => ({
+  getApiPassword: vi.fn(() => 'test-password'),
+  getApiBaseUrl: vi.fn(() => 'https://api.example.com'),
+}))
+
 vi.mock('@/shared/storage/settingsStorage', () => ({
   isExtensionEnabled: vi.fn(),
 }))
@@ -17,8 +22,36 @@ vi.mock('@/shared/detection/getActiveTabIntegrations', () => ({
   getTabIntegrations: vi.fn(),
 }))
 
+vi.mock('@/shared/storage/pageIntegrationsStorage', () => {
+  const store: Record<string, import('@/shared/types/pageIntegrationState').PageIntegrationState> =
+    {}
+
+  return {
+    getPageIntegrationsByTabId: vi.fn(async (tabId: number) => store[String(tabId)] ?? null),
+    setPageIntegrations: vi.fn(async (state) => {
+      store[String(state.tabId)] = state
+    }),
+  }
+})
+
+vi.mock('@/shared/api/domainApi', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/shared/api/domainApi')>()
+  return {
+    ...actual,
+    checkDomain: vi.fn(),
+    sendLetter: vi.fn(),
+  }
+})
+
+vi.mock('@/shared/recipients/resolveDomainSendAddresses', () => ({
+  resolveDomainSendAddresses: vi.fn(),
+}))
+
 import { isExtensionEnabled } from '@/shared/storage/settingsStorage'
 import { getTabIntegrations } from '@/shared/detection/getActiveTabIntegrations'
+import { getPageIntegrationsByTabId } from '@/shared/storage/pageIntegrationsStorage'
+import { checkDomain, sendLetter } from '@/shared/api/domainApi'
+import { resolveDomainSendAddresses } from '@/shared/recipients/resolveDomainSendAddresses'
 
 const workflowContext: WorkflowContext = {
   tabId: 1,
@@ -114,11 +147,26 @@ describe('checkExtensionEnabled', () => {
 
 describe('runAutomaticWorkflow', () => {
   beforeEach(() => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-07-03T12:00:00.000Z'))
+    vi.mocked(getTabIntegrations).mockReset()
+    vi.mocked(checkDomain).mockReset()
     vi.mocked(getTabIntegrations).mockResolvedValue({
       hawk: false,
       sentry: false,
       available: true,
     })
+    vi.mocked(checkDomain).mockResolvedValue('no record')
+    vi.mocked(sendLetter).mockResolvedValue({
+      name: 'example.com',
+      sentTo: [{ to: 'contact@example.com', status: true }],
+      updatedAt: '2026-07-03T12:00:00.000Z',
+    })
+    vi.mocked(resolveDomainSendAddresses).mockResolvedValue(['contact@example.com'])
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
   })
 
   it('should return AUTO_SEND_INACTIVE when extension is disabled', async () => {
@@ -132,7 +180,7 @@ describe('runAutomaticWorkflow', () => {
     expect(result.outcome).toEqual(WORKFLOW_OUTCOMES.AUTO_SEND_INACTIVE)
   })
 
-  it('should return null outcome when extension is enabled and Hawk is not installed', async () => {
+  it('should return EMAIL_SENT when extension is enabled and letter is delivered', async () => {
     // Arrange
     vi.mocked(isExtensionEnabled).mockResolvedValue(true)
 
@@ -140,7 +188,17 @@ describe('runAutomaticWorkflow', () => {
     const result = await runAutomaticWorkflow(workflowContext)
 
     // Assert
-    expect(result.outcome).toBeNull()
+    expect(result.outcome).toEqual(WORKFLOW_OUTCOMES.EMAIL_SENT)
+    expect(sendLetter).toHaveBeenCalledWith(
+      expect.objectContaining({
+        name: 'example.com',
+        address: expect.any(Array),
+        content: expect.objectContaining({
+          subject: expect.stringContaining('example.com'),
+          body: expect.stringContaining('example.com'),
+        }),
+      }),
+    )
   })
 
   it('should return HAWK_INSTALLED when Hawk is detected on page', async () => {
@@ -157,6 +215,26 @@ describe('runAutomaticWorkflow', () => {
 
     // Assert
     expect(result.outcome).toEqual(WORKFLOW_OUTCOMES.HAWK_INSTALLED)
+    expect(await getPageIntegrationsByTabId(workflowContext.tabId)).toMatchObject({
+      hawk: true,
+      sentry: false,
+    })
+  })
+
+  it('should return EMAIL_ALREADY_SENT_WITHIN_HALF_YEAR when domain was sent recently', async () => {
+    // Arrange
+    vi.mocked(isExtensionEnabled).mockResolvedValue(true)
+    vi.mocked(checkDomain).mockResolvedValue({
+      name: 'example.com',
+      sentTo: [{ to: 'sales@example.com', status: true }],
+      updatedAt: '2026-04-01T12:00:00.000Z',
+    })
+
+    // Act
+    const result = await runAutomaticWorkflow(workflowContext)
+
+    // Assert
+    expect(result.outcome).toEqual(WORKFLOW_OUTCOMES.EMAIL_ALREADY_SENT_WITHIN_HALF_YEAR)
   })
 })
 
@@ -185,10 +263,43 @@ describe('resolvePopupOutcome', () => {
     expect(display.color).toBe(2)
   })
 
-  it('should show loading message without outcome color while loading', () => {
+  it('should show EMAIL_ALREADY_SENT_WITHIN_HALF_YEAR message and red color from outcome', () => {
     // Arrange
-    // loading state
+    const outcome = WORKFLOW_OUTCOMES.EMAIL_ALREADY_SENT_WITHIN_HALF_YEAR
 
+    // Act
+    const display = resolvePopupOutcome(outcome, false)
+
+    // Assert
+    expect(display.message).toBe('Письмо уже отправлялось за последние полгода')
+    expect(display.color).toBe(1)
+  })
+
+  it('should show EMAIL_SENT message and green color from outcome', () => {
+    // Arrange
+    const outcome = WORKFLOW_OUTCOMES.EMAIL_SENT
+
+    // Act
+    const display = resolvePopupOutcome(outcome, false)
+
+    // Assert
+    expect(display.message).toBe('Письмо отправлено')
+    expect(display.color).toBe(2)
+  })
+
+  it('should show EMAIL_SEND_FAILED message and red color from outcome', () => {
+    // Arrange
+    const outcome = WORKFLOW_OUTCOMES.EMAIL_SEND_FAILED
+
+    // Act
+    const display = resolvePopupOutcome(outcome, false)
+
+    // Assert
+    expect(display.message).toBe('Не удалось отправить письмо')
+    expect(display.color).toBe(1)
+  })
+
+  it('should show loading message without outcome color while loading', () => {
     // Act
     const display = resolvePopupOutcome(null, true)
 
@@ -198,9 +309,6 @@ describe('resolvePopupOutcome', () => {
   })
 
   it('should return empty display when workflow has no outcome', () => {
-    // Arrange
-    // no outcome, not loading
-
     // Act
     const display = resolvePopupOutcome(null, false)
 

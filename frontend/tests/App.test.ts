@@ -31,6 +31,15 @@ vi.mock('@/popup/composables/usePageIntegrations', () => ({
   }),
 }))
 
+vi.mock('@/popup/composables/useManualSend', () => ({
+  useManualSend: vi.fn(() => ({
+    loading: ref(false),
+    result: ref(null),
+    display: ref(null),
+    send: vi.fn(),
+  })),
+}))
+
 describe('App', () => {
   it('should render title without workflow label when workflow has no outcome', () => {
     // Arrange
@@ -118,5 +127,13 @@ describe('App', () => {
     expect(text).toContain('Sentry')
     expect(text).not.toContain('Есть')
     expect(text).not.toContain('Нет')
+  })
+
+  it('should render manual send button', () => {
+    // Arrange
+    const wrapper = mount(App)
+
+    // Assert
+    expect(wrapper.text()).toContain('Отправить вручную')
   })
 })

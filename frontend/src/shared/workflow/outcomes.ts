@@ -28,6 +28,24 @@ export const WORKFLOW_OUTCOMES = {
     color: 2,
     terminal: true,
   },
+  EMAIL_ALREADY_SENT_WITHIN_HALF_YEAR: {
+    code: 'EMAIL_ALREADY_SENT_WITHIN_HALF_YEAR',
+    message: 'Письмо уже отправлялось за последние полгода',
+    color: 1,
+    terminal: true,
+  },
+  EMAIL_SENT: {
+    code: 'EMAIL_SENT',
+    message: 'Письмо отправлено',
+    color: 2,
+    terminal: true,
+  },
+  EMAIL_SEND_FAILED: {
+    code: 'EMAIL_SEND_FAILED',
+    message: 'Не удалось отправить письмо',
+    color: 1,
+    terminal: true,
+  },
 } as const satisfies Record<string, WorkflowOutcome>
 
 export type WorkflowOutcomeCode = keyof typeof WORKFLOW_OUTCOMES

@@ -3,8 +3,10 @@ import { computed } from 'vue'
 import EnableToggle from './components/EnableToggle.vue'
 import HawkIcon from './components/HawkIcon.vue'
 import IntegrationIndicator from './components/IntegrationIndicator.vue'
+import ManualSendButton from './components/ManualSendButton.vue'
 import { useAutomaticWorkflowOutcome } from './composables/useAutomaticWorkflowOutcome'
 import { useExtensionSettings } from './composables/useExtensionSettings'
+import { useManualSend } from './composables/useManualSend'
 import { usePageIntegrations } from './composables/usePageIntegrations'
 import {
   getOutcomeColorValue,
@@ -18,12 +20,22 @@ const {
   sentry,
   loading: integrationsLoading,
 } = usePageIntegrations()
+const {
+  loading: manualSendLoading,
+  display: manualSendDisplay,
+  send: sendManually,
+} = useManualSend()
 
 const loading = computed(() => settingsLoading.value || workflowLoading.value)
 const workflowDisplay = computed(() => resolvePopupOutcome(outcome.value, loading.value))
 const workflowColor = computed(() =>
   workflowDisplay.value.color
     ? getOutcomeColorValue(workflowDisplay.value.color)
+    : '#64748b',
+)
+const manualSendColor = computed(() =>
+  manualSendDisplay.value
+    ? getOutcomeColorValue(manualSendDisplay.value.color)
     : '#64748b',
 )
 
@@ -54,6 +66,20 @@ async function handleSetEnabled(value: boolean) {
       :disabled="settingsLoading"
       @update:model-value="handleSetEnabled"
     />
+
+    <ManualSendButton
+      :loading="manualSendLoading"
+      :disabled="settingsLoading"
+      @send="sendManually"
+    />
+
+    <p
+      v-if="manualSendDisplay?.message"
+      class="popup__manual-send"
+      :style="{ color: manualSendColor }"
+    >
+      {{ manualSendDisplay.message }}
+    </p>
 
     <section class="popup__integrations" aria-label="На текущей странице">
       <IntegrationIndicator
@@ -98,6 +124,12 @@ async function handleSetEnabled(value: boolean) {
 .popup__workflow {
   margin: 4px 0 0;
   font-size: 0.75rem;
+}
+
+.popup__manual-send {
+  margin: 8px 0 0;
+  font-size: 0.75rem;
+  line-height: 1.125rem;
 }
 
 .popup__integrations {

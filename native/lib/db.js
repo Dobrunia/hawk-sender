@@ -1,9 +1,10 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import Database from 'better-sqlite3'
+import { getDatabasePath } from './databasePath.js'
 import { mergeSentToEntries } from './mergeSentTo.js'
 
-const databasePath = process.env.DATABASE_PATH ?? './data/hawk-sender.db'
+const databasePath = getDatabasePath()
 
 fs.mkdirSync(path.dirname(databasePath), { recursive: true })
 

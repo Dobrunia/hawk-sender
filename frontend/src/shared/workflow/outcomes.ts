@@ -35,6 +35,12 @@ export const WORKFLOW_OUTCOMES = {
     color: 3,
     terminal: true,
   },
+  SENTRY_NOT_INSTALLED: {
+    code: 'SENTRY_NOT_INSTALLED',
+    message: 'Sentry не обнаружен',
+    color: 3,
+    terminal: true,
+  },
   EMAIL_ALREADY_SENT_WITHIN_HALF_YEAR: {
     code: 'EMAIL_ALREADY_SENT_WITHIN_HALF_YEAR',
     message: 'SMTP уже принимал письмо за последние полгода',

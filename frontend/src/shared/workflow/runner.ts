@@ -2,32 +2,15 @@ import type {
   WorkflowContext,
   WorkflowRunOptions,
   WorkflowRunResult,
-  WorkflowStep,
   WorkflowStepDefinition,
 } from '@/shared/workflow/types'
 
-function normalizeStep(
-  step: WorkflowStep | WorkflowStepDefinition,
-): WorkflowStepDefinition {
-  if ('step' in step) {
-    return step
-  }
-
-  return {
-    id: 'send_domain_letter',
-    message: 'Выполняем шаг workflow',
-    step,
-  }
-}
-
 export async function runWorkflowSteps(
-  steps: readonly (WorkflowStep | WorkflowStepDefinition)[],
+  steps: readonly WorkflowStepDefinition[],
   context: WorkflowContext,
   options: WorkflowRunOptions = {},
 ): Promise<WorkflowRunResult> {
-  for (const [index, rawStep] of steps.entries()) {
-    const step = normalizeStep(rawStep)
-
+  for (const [index, step] of steps.entries()) {
     await options.onStepStart?.({
       id: step.id,
       message: step.message,

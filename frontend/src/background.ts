@@ -4,7 +4,7 @@ import {
   handleNativeHostRequest,
   isNativeHostRequest,
 } from '@/shared/native/nativeClient'
-import { ensureDefaultSettings, isExtensionEnabled } from '@/shared/storage/settingsStorage'
+import { ensureDefaultSettings, getSettings } from '@/shared/storage/settingsStorage'
 import {
   setTabWorkflowOutcome,
   setTabWorkflowProgress,
@@ -26,13 +26,24 @@ async function runWorkflowForTab({
   tabId,
   tabUrl,
   enabled,
+  onlyRuDomains,
+  onlySentrySites,
 }: Omit<RunWorkflowRequest, 'type'>) {
   if (!tabUrl.startsWith('http')) {
     await setTabWorkflowOutcome(tabId, tabUrl, null)
     return null
   }
 
-  const workflowEnabled = mode === 'manual' ? true : enabled ?? await isExtensionEnabled()
+  const settings = mode === 'manual' ? null : await getSettings()
+  const workflowEnabled = mode === 'manual'
+    ? true
+    : enabled ?? settings?.enabled ?? true
+  const workflowOnlyRuDomains = mode === 'manual'
+    ? false
+    : onlyRuDomains ?? settings?.onlyRuDomains ?? true
+  const workflowOnlySentrySites = mode === 'manual'
+    ? false
+    : onlySentrySites ?? settings?.onlySentrySites ?? false
 
   if (!workflowEnabled) {
     await setTabWorkflowProgress(tabId, tabUrl, {
@@ -62,6 +73,8 @@ async function runWorkflowForTab({
       tabId,
       tabUrl,
       enabled: workflowEnabled,
+      onlyRuDomains: workflowOnlyRuDomains,
+      onlySentrySites: workflowOnlySentrySites,
     }, {
       onStepStart: (progress) => setTabWorkflowProgress(tabId, tabUrl, {
         status: 'running',

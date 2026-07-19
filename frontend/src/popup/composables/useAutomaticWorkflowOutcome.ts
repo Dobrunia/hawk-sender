@@ -14,6 +14,8 @@ import type { WorkflowOutcome } from '@/shared/workflow/outcomes'
 
 export function useAutomaticWorkflowOutcome(
   enabled: Ref<boolean>,
+  onlyRuDomains: Ref<boolean>,
+  onlySentrySites: Ref<boolean>,
   settingsLoading: Ref<boolean>,
 ) {
   const outcome = ref<WorkflowOutcome | null>(null)
@@ -62,6 +64,8 @@ export function useAutomaticWorkflowOutcome(
   async function rerunForActiveTab(
     nextEnabled = enabled.value,
     mode: WorkflowRunMode = 'automatic',
+    nextOnlyRuDomains = onlyRuDomains.value,
+    nextOnlySentrySites = onlySentrySites.value,
   ) {
     loading.value = true
 
@@ -85,6 +89,8 @@ export function useAutomaticWorkflowOutcome(
         tabId: tab.id,
         tabUrl: tab.url,
         enabled: nextEnabled,
+        onlyRuDomains: nextOnlyRuDomains,
+        onlySentrySites: nextOnlySentrySites,
       })
     } finally {
       loading.value = false
@@ -109,7 +115,7 @@ export function useAutomaticWorkflowOutcome(
     unsubscribe?.()
   })
 
-  watch([enabled, settingsLoading], refresh)
+  watch([enabled, onlyRuDomains, onlySentrySites, settingsLoading], refresh)
 
   return {
     outcome,

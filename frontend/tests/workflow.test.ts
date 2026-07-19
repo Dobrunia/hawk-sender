@@ -1,7 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { runAutomaticWorkflow } from '@/shared/workflow/automaticWorkflow'
 import { runManualWorkflow } from '@/shared/workflow/manualWorkflow'
-import type { WorkflowContext, WorkflowStep } from '@/shared/workflow/types'
+import type {
+  WorkflowContext,
+  WorkflowStep,
+  WorkflowStepDefinition,
+} from '@/shared/workflow/types'
 import { runWorkflowSteps } from '@/shared/workflow/runner'
 import { checkExtensionEnabled } from '@/shared/workflow/steps/checkExtensionEnabled'
 import {
@@ -16,6 +20,8 @@ import {
 
 vi.mock('@/shared/storage/settingsStorage', () => ({
   isExtensionEnabled: vi.fn(),
+  isOnlyRuDomainsEnabled: vi.fn(),
+  isOnlySentrySitesEnabled: vi.fn(),
 }))
 
 vi.mock('@/shared/detection/getActiveTabIntegrations', () => ({
@@ -43,7 +49,11 @@ vi.mock('@/shared/recipients/resolveDomainSendAddresses', () => ({
   resolveDomainSendAddresses: vi.fn(),
 }))
 
-import { isExtensionEnabled } from '@/shared/storage/settingsStorage'
+import {
+  isExtensionEnabled,
+  isOnlyRuDomainsEnabled,
+  isOnlySentrySitesEnabled,
+} from '@/shared/storage/settingsStorage'
 import { getTabIntegrations } from '@/shared/detection/getActiveTabIntegrations'
 import { getPageIntegrationsByTabId } from '@/shared/storage/pageIntegrationsStorage'
 import { checkDomain, sendLetter } from '@/shared/api/domainApi'
@@ -76,9 +86,21 @@ describe('runWorkflowSteps', () => {
       outcome: WORKFLOW_OUTCOMES.AUTO_SEND_INACTIVE,
     })
     const secondStep = vi.fn<WorkflowStep>().mockResolvedValue({ type: 'continue' })
+    const steps: WorkflowStepDefinition[] = [
+      {
+        id: 'check_extension_enabled',
+        message: 'First step',
+        step: firstStep,
+      },
+      {
+        id: 'send_domain_letter',
+        message: 'Second step',
+        step: secondStep,
+      },
+    ]
 
     // Act
-    const result = await runWorkflowSteps([firstStep, secondStep], workflowContext)
+    const result = await runWorkflowSteps(steps, workflowContext)
 
     // Assert
     expect(result.outcome).toEqual(WORKFLOW_OUTCOMES.AUTO_SEND_INACTIVE)
@@ -89,9 +111,21 @@ describe('runWorkflowSteps', () => {
     // Arrange
     const firstStep = vi.fn<WorkflowStep>().mockResolvedValue({ type: 'continue' })
     const secondStep = vi.fn<WorkflowStep>().mockResolvedValue({ type: 'continue' })
+    const steps: WorkflowStepDefinition[] = [
+      {
+        id: 'check_extension_enabled',
+        message: 'First step',
+        step: firstStep,
+      },
+      {
+        id: 'send_domain_letter',
+        message: 'Second step',
+        step: secondStep,
+      },
+    ]
 
     // Act
-    const result = await runWorkflowSteps([firstStep, secondStep], workflowContext)
+    const result = await runWorkflowSteps(steps, workflowContext)
 
     // Assert
     expect(result.outcome).toBeNull()
@@ -183,6 +217,10 @@ describe('runAutomaticWorkflow', () => {
     vi.mocked(checkDomain).mockReset()
     vi.mocked(sendLetter).mockReset()
     vi.mocked(resolveDomainSendAddresses).mockReset()
+    vi.mocked(isOnlyRuDomainsEnabled).mockReset()
+    vi.mocked(isOnlyRuDomainsEnabled).mockResolvedValue(true)
+    vi.mocked(isOnlySentrySitesEnabled).mockReset()
+    vi.mocked(isOnlySentrySitesEnabled).mockResolvedValue(false)
     vi.mocked(getTabIntegrations).mockResolvedValue({
       hawk: false,
       sentry: false,
@@ -247,6 +285,156 @@ describe('runAutomaticWorkflow', () => {
     expect(result.outcome).toEqual(WORKFLOW_OUTCOMES.DOMAIN_NOT_RU)
     expect(getTabIntegrations).not.toHaveBeenCalled()
     expect(sendLetter).not.toHaveBeenCalled()
+  })
+
+  it('should send to a non-.ru domain when RU filter is disabled in context', async () => {
+    // Arrange
+    vi.mocked(isExtensionEnabled).mockResolvedValue(true)
+    vi.mocked(resolveDomainSendAddresses).mockResolvedValue(['contact@example.com'])
+
+    // Act
+    const result = await runAutomaticWorkflow({
+      ...workflowContext,
+      tabUrl: 'https://example.com',
+      onlyRuDomains: false,
+    })
+
+    // Assert
+    expect(result.outcome).toEqual(WORKFLOW_OUTCOMES.EMAIL_SENT)
+    expect(getTabIntegrations).toHaveBeenCalled()
+    expect(sendLetter).toHaveBeenCalledWith(
+      expect.objectContaining({
+        name: 'example.com',
+      }),
+    )
+  })
+
+  it('should use the stored RU filter default when context does not provide it', async () => {
+    // Arrange
+    vi.mocked(isExtensionEnabled).mockResolvedValue(true)
+    vi.mocked(isOnlyRuDomainsEnabled).mockResolvedValue(false)
+    vi.mocked(resolveDomainSendAddresses).mockResolvedValue(['contact@example.com'])
+
+    // Act
+    const result = await runAutomaticWorkflow({
+      ...workflowContext,
+      tabUrl: 'https://example.com',
+    })
+
+    // Assert
+    expect(result.outcome).toEqual(WORKFLOW_OUTCOMES.EMAIL_SENT)
+    expect(sendLetter).toHaveBeenCalledWith(
+      expect.objectContaining({
+        name: 'example.com',
+      }),
+    )
+  })
+
+  it('should stop before sending when Sentry filter is enabled and Sentry is absent', async () => {
+    // Arrange
+    vi.mocked(isExtensionEnabled).mockResolvedValue(true)
+
+    // Act
+    const result = await runAutomaticWorkflow({
+      ...workflowContext,
+      onlySentrySites: true,
+    })
+
+    // Assert
+    expect(result.outcome).toEqual(WORKFLOW_OUTCOMES.SENTRY_NOT_INSTALLED)
+    expect(sendLetter).not.toHaveBeenCalled()
+  })
+
+  it('should send when Sentry filter is enabled and Sentry is detected', async () => {
+    // Arrange
+    vi.mocked(isExtensionEnabled).mockResolvedValue(true)
+    vi.mocked(getTabIntegrations).mockResolvedValue({
+      hawk: false,
+      sentry: true,
+      available: true,
+    })
+
+    // Act
+    const result = await runAutomaticWorkflow({
+      ...workflowContext,
+      onlySentrySites: true,
+    })
+
+    // Assert
+    expect(result.outcome).toEqual(WORKFLOW_OUTCOMES.EMAIL_SENT)
+    expect(sendLetter).toHaveBeenCalled()
+  })
+
+  it('should use the stored Sentry filter when context does not provide it', async () => {
+    // Arrange
+    vi.mocked(isExtensionEnabled).mockResolvedValue(true)
+    vi.mocked(isOnlySentrySitesEnabled).mockResolvedValue(true)
+
+    // Act
+    const result = await runAutomaticWorkflow(workflowContext)
+
+    // Assert
+    expect(result.outcome).toEqual(WORKFLOW_OUTCOMES.SENTRY_NOT_INSTALLED)
+    expect(sendLetter).not.toHaveBeenCalled()
+  })
+
+  it('should report six progress steps when RU filter is enabled', async () => {
+    // Arrange
+    vi.mocked(isExtensionEnabled).mockResolvedValue(true)
+    const totals: number[] = []
+
+    // Act
+    await runAutomaticWorkflow(workflowContext, {
+      onStepStart: (progress) => {
+        totals.push(progress.total)
+      },
+    })
+
+    // Assert
+    expect(totals).toEqual([6, 6, 6, 6, 6, 6])
+  })
+
+  it('should report five progress steps when RU filter is disabled', async () => {
+    // Arrange
+    vi.mocked(isExtensionEnabled).mockResolvedValue(true)
+    const totals: number[] = []
+
+    // Act
+    await runAutomaticWorkflow({
+      ...workflowContext,
+      onlyRuDomains: false,
+    }, {
+      onStepStart: (progress) => {
+        totals.push(progress.total)
+      },
+    })
+
+    // Assert
+    expect(totals).toEqual([5, 5, 5, 5, 5])
+  })
+
+  it('should report seven progress steps when both filters are enabled', async () => {
+    // Arrange
+    vi.mocked(isExtensionEnabled).mockResolvedValue(true)
+    vi.mocked(getTabIntegrations).mockResolvedValue({
+      hawk: false,
+      sentry: true,
+      available: true,
+    })
+    const totals: number[] = []
+
+    // Act
+    await runAutomaticWorkflow({
+      ...workflowContext,
+      onlySentrySites: true,
+    }, {
+      onStepStart: (progress) => {
+        totals.push(progress.total)
+      },
+    })
+
+    // Assert
+    expect(totals).toEqual([7, 7, 7, 7, 7, 7, 7])
   })
 
   it('should keep sending with standard addresses when page integration check is unavailable', async () => {
@@ -340,6 +528,8 @@ describe('runManualWorkflow', () => {
     const result = await runManualWorkflow({
       tabId: 1,
       tabUrl: 'https://example.com',
+      onlyRuDomains: true,
+      onlySentrySites: true,
     })
 
     // Assert
@@ -399,6 +589,18 @@ describe('resolvePopupOutcome', () => {
 
     // Assert
     expect(display.message).toBe('Домен не в зоне .ru')
+    expect(display.color).toBe(3)
+  })
+
+  it('should show SENTRY_NOT_INSTALLED message and neutral color', () => {
+    // Act
+    const display = resolvePopupOutcome(
+      WORKFLOW_OUTCOMES.SENTRY_NOT_INSTALLED,
+      false,
+    )
+
+    // Assert
+    expect(display.message).toBe('Sentry не обнаружен')
     expect(display.color).toBe(3)
   })
 

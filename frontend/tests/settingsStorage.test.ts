@@ -5,6 +5,8 @@ import {
   ensureDefaultSettings,
   getSettings,
   isExtensionEnabled,
+  isOnlyRuDomainsEnabled,
+  isOnlySentrySitesEnabled,
   setSettings,
 } from '@/shared/storage/settingsStorage'
 
@@ -44,6 +46,21 @@ describe('settingsStorage', () => {
     expect(settings).toEqual(DEFAULT_SETTINGS)
   })
 
+  it('should merge legacy settings with new defaults', async () => {
+    // Arrange
+    storage.set(SETTINGS_STORAGE_KEY, { enabled: false })
+
+    // Act
+    const settings = await getSettings()
+
+    // Assert
+    expect(settings).toEqual({
+      enabled: false,
+      onlyRuDomains: true,
+      onlySentrySites: false,
+    })
+  })
+
   it('should persist enabled flag and reflect it in isExtensionEnabled', async () => {
     // Arrange
     // storage is empty after beforeEach
@@ -54,8 +71,45 @@ describe('settingsStorage', () => {
     const enabled = await isExtensionEnabled()
 
     // Assert
-    expect(settings).toEqual({ enabled: false })
+    expect(settings).toEqual({
+      enabled: false,
+      onlyRuDomains: true,
+      onlySentrySites: false,
+    })
     expect(enabled).toBe(false)
+  })
+
+  it('should persist RU filter flag and reflect it in isOnlyRuDomainsEnabled', async () => {
+    // Arrange
+    // storage is empty after beforeEach
+
+    // Act
+    await setSettings({ onlyRuDomains: false })
+    const settings = await getSettings()
+    const onlyRuDomains = await isOnlyRuDomainsEnabled()
+
+    // Assert
+    expect(settings).toEqual({
+      enabled: true,
+      onlyRuDomains: false,
+      onlySentrySites: false,
+    })
+    expect(onlyRuDomains).toBe(false)
+  })
+
+  it('should persist Sentry filter flag', async () => {
+    // Act
+    await setSettings({ onlySentrySites: true })
+    const settings = await getSettings()
+    const onlySentrySites = await isOnlySentrySitesEnabled()
+
+    // Assert
+    expect(settings).toEqual({
+      enabled: true,
+      onlyRuDomains: true,
+      onlySentrySites: true,
+    })
+    expect(onlySentrySites).toBe(true)
   })
 
   it('should write default settings on first install', async () => {

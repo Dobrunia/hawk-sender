@@ -9,6 +9,8 @@ export interface RunWorkflowRequest {
   tabId: number
   tabUrl: string
   enabled?: boolean
+  onlyRuDomains?: boolean
+  onlySentrySites?: boolean
 }
 
 export interface RunWorkflowResponse {

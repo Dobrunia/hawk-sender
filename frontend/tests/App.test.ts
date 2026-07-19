@@ -9,8 +9,12 @@ import { WORKFLOW_OUTCOMES } from '@/shared/workflow/outcomes'
 vi.mock('@/popup/composables/useExtensionSettings', () => ({
   useExtensionSettings: vi.fn(() => ({
     enabled: ref(true),
+    onlyRuDomains: ref(true),
+    onlySentrySites: ref(false),
     loading: ref(false),
     setEnabled: vi.fn(),
+    setOnlyRuDomains: vi.fn(),
+    setOnlySentrySites: vi.fn(),
   })),
 }))
 
@@ -50,8 +54,12 @@ describe('App', () => {
   beforeEach(() => {
     vi.mocked(useExtensionSettings).mockReturnValue({
       enabled: ref(true),
+      onlyRuDomains: ref(true),
+      onlySentrySites: ref(false),
       loading: ref(false),
       setEnabled: vi.fn(),
+      setOnlyRuDomains: vi.fn(),
+      setOnlySentrySites: vi.fn(),
     })
     vi.mocked(useAutomaticWorkflowOutcome).mockReturnValue({
       outcome: ref(null),
@@ -73,6 +81,11 @@ describe('App', () => {
     expect(text).toContain('Hawk Sender')
     expect(text).not.toContain('Активно')
     expect(text).toContain('Автосбор и отправка')
+    expect(text).toContain('Только .ru-домены')
+    expect(text).toContain('Только сайты с Sentry')
+    expect(wrapper.findAll('[role="switch"]')).toHaveLength(3)
+    expect(wrapper.find('input[type="checkbox"]').exists()).toBe(false)
+    expect(wrapper.find('.popup__workflow').exists()).toBe(true)
   })
 
   it('should rerun workflow after toggle change', async () => {
@@ -81,8 +94,12 @@ describe('App', () => {
     const setEnabled = vi.fn().mockResolvedValue(undefined)
     vi.mocked(useExtensionSettings).mockReturnValue({
       enabled: ref(true),
+      onlyRuDomains: ref(true),
+      onlySentrySites: ref(false),
       loading: ref(false),
       setEnabled,
+      setOnlyRuDomains: vi.fn(),
+      setOnlySentrySites: vi.fn(),
     })
     vi.mocked(useAutomaticWorkflowOutcome).mockReturnValue({
       outcome: ref(null),
@@ -98,7 +115,12 @@ describe('App', () => {
 
     // Assert
     expect(setEnabled).toHaveBeenCalledWith(false)
-    expect(rerunForActiveTab).toHaveBeenCalledWith(false, 'automatic')
+    expect(rerunForActiveTab).toHaveBeenCalledWith(
+      false,
+      'automatic',
+      true,
+      false,
+    )
   })
 
   it('should rerun workflow when toggle is enabled', async () => {
@@ -107,8 +129,12 @@ describe('App', () => {
     const setEnabled = vi.fn().mockResolvedValue(undefined)
     vi.mocked(useExtensionSettings).mockReturnValue({
       enabled: ref(false),
+      onlyRuDomains: ref(true),
+      onlySentrySites: ref(false),
       loading: ref(false),
       setEnabled,
+      setOnlyRuDomains: vi.fn(),
+      setOnlySentrySites: vi.fn(),
     })
     vi.mocked(useAutomaticWorkflowOutcome).mockReturnValue({
       outcome: ref(null),
@@ -124,7 +150,82 @@ describe('App', () => {
 
     // Assert
     expect(setEnabled).toHaveBeenCalledWith(true)
-    expect(rerunForActiveTab).toHaveBeenCalledWith(true, 'automatic')
+    expect(rerunForActiveTab).toHaveBeenCalledWith(
+      true,
+      'automatic',
+      true,
+      false,
+    )
+  })
+
+  it('should persist RU filter setting and rerun automatic workflow', async () => {
+    // Arrange
+    const rerunForActiveTab = vi.fn().mockResolvedValue(undefined)
+    const setOnlyRuDomains = vi.fn().mockResolvedValue(undefined)
+    vi.mocked(useExtensionSettings).mockReturnValue({
+      enabled: ref(true),
+      onlyRuDomains: ref(true),
+      onlySentrySites: ref(false),
+      loading: ref(false),
+      setEnabled: vi.fn(),
+      setOnlyRuDomains,
+      setOnlySentrySites: vi.fn(),
+    })
+    vi.mocked(useAutomaticWorkflowOutcome).mockReturnValue({
+      outcome: ref(null),
+      progress: ref(null),
+      loading: ref(false),
+      refresh: vi.fn(),
+      rerunForActiveTab,
+    })
+    const wrapper = mount(App)
+
+    // Act
+    await wrapper.findAll('[role="switch"]')[1].trigger('click')
+
+    // Assert
+    expect(setOnlyRuDomains).toHaveBeenCalledWith(false)
+    expect(rerunForActiveTab).toHaveBeenCalledWith(
+      true,
+      'automatic',
+      false,
+      false,
+    )
+  })
+
+  it('should persist Sentry filter setting and rerun automatic workflow', async () => {
+    // Arrange
+    const rerunForActiveTab = vi.fn().mockResolvedValue(undefined)
+    const setOnlySentrySites = vi.fn().mockResolvedValue(undefined)
+    vi.mocked(useExtensionSettings).mockReturnValue({
+      enabled: ref(true),
+      onlyRuDomains: ref(true),
+      onlySentrySites: ref(false),
+      loading: ref(false),
+      setEnabled: vi.fn(),
+      setOnlyRuDomains: vi.fn(),
+      setOnlySentrySites,
+    })
+    vi.mocked(useAutomaticWorkflowOutcome).mockReturnValue({
+      outcome: ref(null),
+      progress: ref(null),
+      loading: ref(false),
+      refresh: vi.fn(),
+      rerunForActiveTab,
+    })
+    const wrapper = mount(App)
+
+    // Act
+    await wrapper.findAll('[role="switch"]')[2].trigger('click')
+
+    // Assert
+    expect(setOnlySentrySites).toHaveBeenCalledWith(true)
+    expect(rerunForActiveTab).toHaveBeenCalledWith(
+      true,
+      'automatic',
+      true,
+      true,
+    )
   })
 
   it('should render HAWK_INSTALLED workflow outcome on current page', () => {
@@ -149,8 +250,12 @@ describe('App', () => {
     // Arrange
     vi.mocked(useExtensionSettings).mockReturnValue({
       enabled: ref(false),
+      onlyRuDomains: ref(true),
+      onlySentrySites: ref(false),
       loading: ref(false),
       setEnabled: vi.fn(),
+      setOnlyRuDomains: vi.fn(),
+      setOnlySentrySites: vi.fn(),
     })
     vi.mocked(useAutomaticWorkflowOutcome).mockReturnValue({
       outcome: ref(null),

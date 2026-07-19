@@ -8,6 +8,7 @@ describe('EnableToggle', () => {
     const wrapper = mount(EnableToggle, {
       props: {
         modelValue: true,
+        label: 'Только .ru-домены',
       },
     })
 
@@ -16,6 +17,9 @@ describe('EnableToggle', () => {
 
     // Assert
     expect(ariaChecked).toBe('true')
+    expect(wrapper.get('[role="switch"]').attributes('aria-label')).toBe(
+      'Только .ru-домены',
+    )
   })
 
   it('should emit update:modelValue with false when clicked while enabled', async () => {

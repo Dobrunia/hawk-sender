@@ -8,6 +8,10 @@ import { extractDomainFromUrl } from '@/shared/domain/extractDomain'
 import { readSentryInstalled } from '@/shared/integrations/readPageIntegrations'
 import { buildLetterContent } from '@/shared/letters/buildLetter'
 import { resolveDomainSendAddresses } from '@/shared/recipients/resolveDomainSendAddresses'
+import {
+  formatHelperFailureMessage,
+  formatNoDeliveryMessage,
+} from '@/shared/send/sendDomainLetterMessages'
 
 export type SendDomainLetterFailureReason =
   | 'no_domain'
@@ -115,27 +119,15 @@ export function formatManualSendResult(result: SendDomainLetterResult): {
 
   if (result.reason === 'no_delivery') {
     return {
-      message: result.error
-        ? formatSmtpFailureMessage(result.error)
-        : 'Ошибка отправки: SMTP не принял письмо ни на один адрес',
+      message: formatNoDeliveryMessage(result.error),
       color: 1,
     }
   }
 
   return {
-    message: result.error
-      ? `Ошибка helper: ${result.error}`
-      : 'Ошибка helper',
+    message: formatHelperFailureMessage(result.error),
     color: 1,
   }
-}
-
-function formatSmtpFailureMessage(error: string): string {
-  if (error.startsWith('SMTP лимит отправки:')) {
-    return error
-  }
-
-  return `Ошибка SMTP: ${error}`
 }
 
 function getSmtpError(sentTo: SentToEntry[]): string | undefined {

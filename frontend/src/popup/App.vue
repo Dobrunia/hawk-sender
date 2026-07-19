@@ -13,13 +13,26 @@ import {
   resolvePopupOutcome,
 } from '@/shared/workflow/outcomes'
 
-const { enabled, loading: settingsLoading, setEnabled } = useExtensionSettings()
+const {
+  enabled,
+  onlyRuDomains,
+  onlySentrySites,
+  loading: settingsLoading,
+  setEnabled,
+  setOnlyRuDomains,
+  setOnlySentrySites,
+} = useExtensionSettings()
 const {
   outcome,
   progress,
   loading: workflowLoading,
   rerunForActiveTab,
-} = useAutomaticWorkflowOutcome(enabled, settingsLoading)
+} = useAutomaticWorkflowOutcome(
+  enabled,
+  onlyRuDomains,
+  onlySentrySites,
+  settingsLoading,
+)
 const {
   hawk,
   sentry,
@@ -55,7 +68,32 @@ const workflowStepLabel = computed(() => {
 
 async function handleSetEnabled(value: boolean) {
   await setEnabled(value)
-  await rerunForActiveTab(value, 'automatic')
+  await rerunForActiveTab(
+    value,
+    'automatic',
+    onlyRuDomains.value,
+    onlySentrySites.value,
+  )
+}
+
+async function handleSetOnlyRuDomains(value: boolean) {
+  await setOnlyRuDomains(value)
+  await rerunForActiveTab(
+    enabled.value,
+    'automatic',
+    value,
+    onlySentrySites.value,
+  )
+}
+
+async function handleSetOnlySentrySites(value: boolean) {
+  await setOnlySentrySites(value)
+  await rerunForActiveTab(
+    enabled.value,
+    'automatic',
+    onlyRuDomains.value,
+    value,
+  )
 }
 
 async function sendManually() {
@@ -77,25 +115,43 @@ async function openDatabase() {
         <HawkIcon class="popup__title-icon" />
       </h1>
       <p
-        v-if="workflowMessage"
         class="popup__workflow"
         :style="{ color: workflowColor }"
+        :title="[workflowMessage, workflowStepLabel].filter(Boolean).join(' · ')"
+        aria-live="polite"
+        aria-atomic="true"
       >
-        {{ workflowMessage }}
+        <span class="popup__workflow-message">{{ workflowMessage }}</span>
         <span
           v-if="workflowStepLabel"
           class="popup__workflow-step"
         >
-          {{ workflowStepLabel }}
+          · {{ workflowStepLabel }}
         </span>
       </p>
     </header>
 
-    <EnableToggle
-      :model-value="enabled"
-      :disabled="settingsLoading"
-      @update:model-value="handleSetEnabled"
-    />
+    <section class="popup__settings" aria-label="Настройки отправки">
+      <EnableToggle
+        :model-value="enabled"
+        :disabled="settingsLoading"
+        @update:model-value="handleSetEnabled"
+      />
+
+      <EnableToggle
+        :model-value="onlyRuDomains"
+        label="Только .ru-домены"
+        :disabled="settingsLoading"
+        @update:model-value="handleSetOnlyRuDomains"
+      />
+
+      <EnableToggle
+        :model-value="onlySentrySites"
+        label="Только сайты с Sentry"
+        :disabled="settingsLoading"
+        @update:model-value="handleSetOnlySentrySites"
+      />
+    </section>
 
     <ManualSendButton
       :loading="workflowLoading"
@@ -138,6 +194,11 @@ async function openDatabase() {
   margin-bottom: 16px;
 }
 
+.popup__settings {
+  display: grid;
+  gap: 10px;
+}
+
 .popup__title {
   display: flex;
   align-items: center;
@@ -154,14 +215,25 @@ async function openDatabase() {
 }
 
 .popup__workflow {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+  height: 1.125rem;
+  overflow: hidden;
   margin: 4px 0 0;
   font-size: 0.75rem;
   line-height: 1.125rem;
+  white-space: nowrap;
+}
+
+.popup__workflow-message {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .popup__workflow-step {
-  display: block;
-  margin-top: 2px;
+  flex-shrink: 0;
   color: #64748b;
 }
 

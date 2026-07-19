@@ -1,19 +1,21 @@
 <script setup lang="ts">
 const enabled = defineModel<boolean>({ required: true })
 
-const { disabled = false } = defineProps<{
+const { disabled = false, label = 'Автосбор и отправка' } = defineProps<{
   disabled?: boolean
+  label?: string
 }>()
 </script>
 
 <template>
   <label class="toggle" :class="{ 'toggle--disabled': disabled }">
-    <span class="toggle__label">Автосбор и отправка</span>
+    <span class="toggle__label">{{ label }}</span>
     <button
       type="button"
       role="switch"
       class="toggle__switch"
       :aria-checked="enabled"
+      :aria-label="label"
       :disabled="disabled"
       @click="enabled = !enabled"
     >

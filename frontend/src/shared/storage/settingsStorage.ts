@@ -32,6 +32,16 @@ export async function isExtensionEnabled(): Promise<boolean> {
   return settings.enabled
 }
 
+export async function isOnlyRuDomainsEnabled(): Promise<boolean> {
+  const settings = await getSettings()
+  return settings.onlyRuDomains
+}
+
+export async function isOnlySentrySitesEnabled(): Promise<boolean> {
+  const settings = await getSettings()
+  return settings.onlySentrySites
+}
+
 export async function ensureDefaultSettings(): Promise<void> {
   const stored = await browser.storage.local.get(SETTINGS_STORAGE_KEY)
 

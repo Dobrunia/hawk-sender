@@ -39,4 +39,26 @@ describe('extractDomainFromHostname', () => {
     // Assert
     expect(domain).toBe('example.com')
   })
+
+  it('should extract registrable domain for common second-level public suffixes', () => {
+    // Arrange
+    const hostname = 'shop.example.co.uk'
+
+    // Act
+    const domain = extractDomainFromHostname(hostname)
+
+    // Assert
+    expect(domain).toBe('example.co.uk')
+  })
+
+  it('should return null when hostname is only a known public suffix', () => {
+    // Arrange
+    const hostname = 'co.uk'
+
+    // Act
+    const domain = extractDomainFromHostname(hostname)
+
+    // Assert
+    expect(domain).toBeNull()
+  })
 })
